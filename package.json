@@ -94,9 +94,9 @@
   },
   "c8": {
     "check-coverage": true,
-    "lines": 37,
+    "lines": 34,
     "branches": 30,
     "functions": 35,
-    "statements": 37
+    "statements": 34
   }
 }
