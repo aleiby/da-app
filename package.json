@@ -2,7 +2,6 @@
   "name": "digitalarcana",
   "version": "0.1.0",
   "private": true,
-  "proxy": "http://localhost:8080",
   "engines": {
     "node": ">=14.0.0",
     "npm": ">=6.0.0"
@@ -13,11 +12,7 @@
     "@taquito/beacon-wallet": "^12.1.0",
     "@taquito/signer": "^12.1.0",
     "@taquito/taquito": "^12.1.0",
-    "@testing-library/jest-dom": "^5.16.4",
-    "@testing-library/react": "^13.2.0",
-    "@testing-library/user-event": "^14.2.0",
-    "@types/jest": "^27.5.1",
-    "@types/node": "^17.0.33",
+    "@types/node": "^20.0.0",
     "@types/react": "^18.0.9",
     "@types/react-dom": "^18.0.4",
     "axios": "^0.27.2",
@@ -40,34 +35,25 @@
     "react": "^18.1.0",
     "react-bootstrap": "^2.4.0",
     "react-dom": "^18.1.0",
-    "react-scripts": "4.0.3",
     "react-unity-webgl": "^8.8.0",
     "redis": "^4.1.0",
     "socket.io": "^4.5.0",
     "socket.io-client": "^4.5.0",
     "ts-node": "^10.7.0",
-    "typescript": "^4.6.4",
-    "web-vitals": "^2.1.4"
+    "typescript": "^4.6.4"
   },
   "scripts": {
     "start": "npx ts-node ./src/server.ts",
-    "start-client": "react-scripts start",
-    "test-client": "react-scripts test",
-    "build": "react-scripts build",
+    "start-client": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
     "test": "c8 --check-coverage ava",
     "test-dev": "npx ava --watch",
     "typecheck": "tsc --noEmit",
     "typecheck:watch": "tsc --noEmit --watch",
-    "eject": "react-scripts eject",
     "redis-start": "./start-redis.sh",
     "redis-restart": "sudo service redis-server restart",
     "server-dev": "NODE_ENV=development nodemon --ignore sets/ ./src/server.ts"
-  },
-  "eslintConfig": {
-    "extends": [
-      "react-app",
-      "react-app/jest"
-    ]
   },
   "browserslist": {
     "production": [
@@ -82,8 +68,11 @@
     ]
   },
   "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.0",
     "ava": "^4.2.0",
-    "nodemon": "^3.1.11"
+    "nodemon": "^3.1.11",
+    "vite": "^5.4.0",
+    "vite-plugin-node-polyfills": "^0.24.0"
   },
   "ava": {
     "extensions": [
