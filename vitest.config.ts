@@ -8,12 +8,15 @@ export default defineConfig({
     // Use Node.js environment for server-side tests
     environment: 'node',
     // Run tests in sequence to avoid port conflicts (server side effects)
+    // The server.ts module has side effects that start the server on import
+    // Use forks pool with single fork to avoid module isolation issues
     pool: 'forks',
     poolOptions: {
       forks: {
         singleFork: true,
       },
     },
+    fileParallelism: false,
     // Don't process server-side node_modules
     server: {
       deps: {
