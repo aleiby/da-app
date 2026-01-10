@@ -1,0 +1,6 @@
+npx lint-staged
+
+# Run type checking if any TypeScript files are staged
+if git diff --cached --name-only | grep -qE '\.(ts|tsx)$'; then
+  npm run typecheck
+fi

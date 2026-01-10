@@ -12,6 +12,15 @@ https://digitalarcana.xyz/ (raise or lower piano top to adjust volume)
 
 ## Getting Started
 
+**New contributors and AI agents**: Run the bootstrap script to set up your development environment:
+
+```bash
+npm run bootstrap
+```
+
+This will check prerequisites, install dependencies, start Redis, set up configuration templates, and verify the setup with type checking and tests.
+
+For more detailed guides:
 - **[Quick Start Guide](QUICKSTART.md)** - Get up and running in under 10 minutes
 - **[Complete Setup Documentation](SETUP.md)** - Detailed installation and configuration guide
 - **[Architecture & Development Guide](CLAUDE.md)** - For AI agents and developers
