@@ -80,7 +80,8 @@
     ]
   },
   "devDependencies": {
-    "ava": "^4.2.0"
+    "ava": "^4.2.0",
+    "nodemon": "^3.1.11"
   },
   "ava": {
     "extensions": [
