@@ -57,6 +57,7 @@
     "test": "c8 ava",
     "test-dev": "npx ava --watch",
     "eject": "react-scripts eject",
+    "redis-start": "./start-redis.sh",
     "redis-restart": "sudo service redis-server restart",
     "server-dev": "NODE_ENV=development nodemon --ignore sets/ ./src/server.ts"
   },

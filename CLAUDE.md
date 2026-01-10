@@ -14,7 +14,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `npm run start` - Start production server (`ts-node ./src/server.ts`)
 - `npm run start-client` - Start React development server (port 3000)
 - `npm run server-dev` - Start server with nodemon in development mode (watches for changes)
-- `npm run redis-restart` - Restart Redis service
+- `npm run redis-start` - Start Redis server (required for development, see REDIS_SETUP.md)
+- `npm run redis-restart` - Restart Redis service (for system-wide installations)
 
 ## Architecture Overview
 

@@ -16,6 +16,11 @@
 # installation files
 .redis-install/
 
+# redis data
+.redis/
+*.rdb
+*.aof
+
 # misc
 .DS_Store
 .env.local
