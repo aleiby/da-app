@@ -3,8 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "engines": {
-    "node": ">=14.0.0",
-    "npm": ">=6.0.0"
+    "node": "^18.0.0",
+    "npm": "^10.0.0"
   },
   "dependencies": {
     "@airgap/beacon-sdk": "^2.3.13",
@@ -54,7 +54,8 @@
     "redis-start": "./start-redis.sh",
     "redis-restart": "sudo service redis-server restart",
     "server-dev": "NODE_ENV=development nodemon --ignore sets/ ./src/server.ts",
-    "test:contracts": "./python/tests/run_tests.sh"
+    "test:contracts": "./python/tests/run_tests.sh",
+    "dev:reset": "./scripts/reset-dev-state.sh"
   },
   "browserslist": {
     "production": [

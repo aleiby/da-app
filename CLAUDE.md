@@ -9,6 +9,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `npm test` - Run all tests with AVA + c8 coverage
 - `npx ava src/tests/test.ts --match "test name"` - Run a specific test by name
 - `npm run test-dev` - Run tests in watch mode
+- `npm run test:contracts` - Run SmartPy contract tests (requires SmartPy installation)
 
 ### Development
 - `npm run start` - Start production server (`ts-node ./src/server.ts`)
@@ -87,6 +88,14 @@ React app embeds Unity WebGL build for 3D card table. Communicates via:
 - **fa2.py** - FA2 NFT token contract (cards as NFTs)
 - **escrow.py** - Escrow contract for pack purchases (prevents front-running)
 - Deployed on Tezos testnet and mainnet (see README for addresses)
+
+#### Smart Contract Tests (python/tests/)
+SmartPy tests for contract verification:
+- **test_fa2.py** - FA2 token tests (minting, transfers, operators, balance queries)
+- **test_escrow.py** - Escrow/Marketplace tests (deposits, redemption, edge cases)
+- Run with: `npm run test:contracts` or `./python/tests/run_tests.sh`
+- Requires SmartPy: `pip install smartpy-tezos`
+- See `python/tests/README.md` for detailed documentation
 
 ### Data Flow Example: Playing War
 1. Player clicks "Play War" → Connection.playGame() → matchmaking via Redis list
