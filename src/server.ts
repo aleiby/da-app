@@ -1,3 +1,16 @@
+/**
+ * Express + Socket.io server for Digital Arcana
+ *
+ * WARNING: This module has side effects on import!
+ * When this file is imported (directly or transitively), it immediately:
+ *   1. Connects to Redis
+ *   2. Creates and configures the Express app
+ *   3. Starts the HTTP server on port 8080
+ *
+ * This behavior exists because cards.ts imports `redis` from this file,
+ * and many modules import from cards.ts. The tests rely on this behavior
+ * to have a running server without explicit setup.
+ */
 import { createClient } from "redis";
 import { Server, Socket } from "socket.io";
 import { isDevelopment } from "./utils";

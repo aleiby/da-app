@@ -1,3 +1,16 @@
+/**
+ * Test suite for Digital Arcana
+ *
+ * Note: Importing from "../cards" triggers a side effect that starts the server.
+ * The import chain is: test.ts -> cards.ts -> server.ts
+ * When server.ts loads, it immediately:
+ *   1. Connects to Redis
+ *   2. Creates Express app and Socket.io server
+ *   3. Starts listening on port 8080
+ *
+ * This means the server is running for all tests in this file, which is
+ * required for the server integration tests at the bottom of this file.
+ */
 import test from 'ava';
 import { createClient } from "redis";
 import { initDeck, registerCards } from "../cards";
