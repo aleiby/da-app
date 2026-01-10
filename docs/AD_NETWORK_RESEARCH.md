@@ -8,7 +8,11 @@ This document evaluates gaming-specific ad networks for monetizing Digital Arcan
 
 **Key Finding**: Google Ads rejected the original "ads on card artwork" concept. Gaming-specific ad networks offer better compatibility with browser games and support ad formats designed for gaming contexts.
 
-**Top Recommendation**: **AppLixir** for rewarded video ads, paired with **AdinPlay/Venatus** for display/interstitial ads. Both specialize in HTML5/WebGL browser games and have no minimum traffic requirements.
+**Initial Recommendation**: AppLixir for rewarded video ads, paired with AdinPlay/Venatus for display/interstitial ads. Both specialize in HTML5/WebGL browser games and have no minimum traffic requirements.
+
+**Status**: This recommendation is **not acceptable** for Digital Arcana. Interstitial ads and rewarded videos are intrusive and not aligned with the project's vision. The preferred approach is displaying ads directly on the default card artwork - this is less intrusive, provides constant exposure, and naturally incentivizes purchasing NFT card packs to remove ads.
+
+**Next Steps**: Research custom "ads-on-cards" integration with these gaming ad networks. See issue **da-app-crq** for follow-up work.
 
 ---
 
@@ -197,11 +201,12 @@ This document evaluates gaming-specific ad networks for monetizing Digital Arcan
 - **Implementation**: React components outside Unity canvas
 - **Caution**: May impact performance on lower-end devices
 
-#### 4. Card Artwork Ads (Original Concept)
-- **Status**: Rejected by Google Ads
-- **Alternative**: May work with gaming-specific networks that allow creative formats
-- **Networks to Explore**: AdinPlay (branded site skins), Venatus (custom formats)
-- **Note**: Would require custom integration and advertiser approval
+#### 4. Card Artwork Ads (PREFERRED - Original Concept)
+- **Status**: Rejected by Google Ads, but gaming-specific networks may be more flexible
+- **Why Preferred**: Less intrusive, constant exposure, incentivizes NFT card pack purchases to remove ads
+- **Networks to Explore**: AppLixir, AdinPlay, Venatus - need to inquire about custom ad placements
+- **Questions**: Can ads render to canvas/texture? API access for programmatic fetching? Impression tracking?
+- **Follow-up**: See issue **da-app-crq** for research tasks
 
 ---
 
@@ -272,8 +277,11 @@ Recommended: **Option A** - Ad-free for NFT owners incentivizes purchases.
 
 ## Next Steps
 
-1. **Immediate**: Apply to AppLixir (no minimum, quick integration)
-2. **Short-term**: Apply to AdinPlay/Venatus (10-14 day approval)
+1. **Priority**: Research ads-on-cards feasibility with gaming ad networks (see **da-app-crq**)
+   - Contact AppLixir, AdinPlay, Venatus about custom ad placements
+   - Ask about rendering ads to canvas/WebGL textures
+   - Understand impression tracking for embedded ads
+2. **Fallback**: If ads-on-cards not feasible, reconsider standard formats
 3. **Development**: Create ad integration points in Unity bridge
 4. **Testing**: Implement test ads before production deployment
 
