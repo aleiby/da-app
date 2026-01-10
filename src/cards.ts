@@ -16,7 +16,9 @@ export const registerCard = async (value: number, token_id: number = -1, ipfsUri
         return await redis.incr('nextCardId');
     };
     const card = {id: await getNextCardId(), value, token_id, ipfsUri};
-    redis.hSet(`card:${card.id}`, card);
+    // Redis 5.x: hSet requires explicit field-value pairs, convert object to entries
+    const entries: [string, string][] = Object.entries(card).map(([k, v]) => [k, String(v)]);
+    redis.hSet(`card:${card.id}`, entries);
     return card;
 };
 

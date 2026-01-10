@@ -89,13 +89,19 @@ export class Connection
                     streams.map(stream => ({id: ids[stream] ?? '0-0', key: stream})),
                     {BLOCK: 5000}
                 );
-                response?.forEach(stream => {
-                    stream.messages.forEach(msg => {
-                        this.handleEvent(msg.message.msg);
-                        redis.hSet(idsKey, stream.name, msg.id);
-                        ids[stream.name] = msg.id;
-                    });
-                });
+                // Redis 5.x returns typed response - handle array of stream results
+                if (response && Array.isArray(response)) {
+                    for (const streamResult of response) {
+                        if (streamResult && typeof streamResult === 'object' && 'name' in streamResult && 'messages' in streamResult) {
+                            const { name, messages } = streamResult as { name: string; messages: Array<{ id: string; message: Record<string, string> }> };
+                            for (const msg of messages) {
+                                this.handleEvent(msg.message.msg);
+                                redis.hSet(idsKey, name, msg.id);
+                                ids[name] = msg.id;
+                            }
+                        }
+                    }
+                }
             }
             stream.disconnect();
         })();

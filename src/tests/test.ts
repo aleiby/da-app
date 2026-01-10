@@ -21,8 +21,10 @@ const tableId = 'table:test';
 beforeEach(async () => {
   const redis = createClient();
   await redis.connect();
-  for await (const key of redis.scanIterator({ MATCH: `${tableId}*` })) {
-    redis.del(key);
+  // Redis 5.x: use KEYS command for test cleanup (acceptable in test environment)
+  const keys = await redis.keys(`${tableId}*`);
+  if (keys.length > 0) {
+    await redis.del(keys as string[]);
   }
   await redis.disconnect();
 });

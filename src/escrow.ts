@@ -1,20 +1,27 @@
 import { TezosToolkit, MichelCodecPacker } from "@taquito/taquito";
 import { BeaconWallet } from "@taquito/beacon-wallet";
+import { BeaconEvent, AccountInfo } from "@airgap/beacon-sdk";
 import { escrowContract, rpcUrl, network } from "./contracts";
 
 const Tezos = new TezosToolkit(rpcUrl);
 const wallet = new BeaconWallet({
-    name: "da-client (hangzhou)",
-    preferredNetwork: network
+    name: "Digital Arcana",
+    network: { type: network, rpcUrl }
 });
 
 Tezos.setWalletProvider(wallet);
 Tezos.setPackerProvider(new MichelCodecPacker());
 
+// Track active account via event subscription (Beacon 4.x pattern)
+let activeAccount: AccountInfo | undefined;
+wallet.client.subscribeToEvent(BeaconEvent.ACTIVE_ACCOUNT_SET, (account) => {
+    activeAccount = account;
+});
+
 export const connectWallet = async() => {
     try {
         await wallet.clearActiveAccount();
-        await wallet.requestPermissions({network: {type: network, rpcUrl}});
+        await wallet.requestPermissions();
     } catch (error) {
         console.log(error);
         return error;
@@ -23,12 +30,11 @@ export const connectWallet = async() => {
 
 // Get address to use for purchases.
 export const getWalletAddress = async() => {
-    const activeAccount = await wallet.client.getActiveAccount();
     if (activeAccount) {
         return activeAccount.address;
     }
 
-    await wallet.requestPermissions({network: {type: network, rpcUrl}});
+    await wallet.requestPermissions();
     return await wallet.getPKH();
 };
 
@@ -40,12 +46,12 @@ export const buyPack = async () => {
 
         // Send money to escrow contract.
         const contract = await Tezos.wallet.at(escrowContract);
-        const op = await contract.methods.add_funds().send({amount: 1});
+        const op = await contract.methodsObject.add_funds().send({amount: 1});
         console.log('Operation hash:', op.opHash);
         await op.confirmation();
         console.log("Confirmed!");
         return true;
-    
+
     } catch (error) {
         console.log(error);
     }
@@ -59,12 +65,12 @@ export const refundPack = async() => {
 
         // Retrieve money from escrow contract.
         const contract = await Tezos.wallet.at(escrowContract);
-        const op = await contract.methods.pull_funds().send();
+        const op = await contract.methodsObject.pull_funds().send();
         console.log('Operation hash:', op.opHash);
         await op.confirmation();
         console.log("Confirmed!");
         return true;
-    
+
     } catch (error) {
         console.log(error);
     }

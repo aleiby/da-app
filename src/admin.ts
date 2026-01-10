@@ -8,7 +8,7 @@ import { NFTStorage } from "nft.storage";
 import { MongoClient } from "mongodb";
 import { TezosToolkit, MichelsonMap } from "@taquito/taquito";
 import { InMemorySigner } from "@taquito/signer";
-import { char2Bytes } from "@taquito/utils";
+import { stringToBytes } from "@taquito/utils";
 import { fa2Contract, rpcUrl } from "./contracts";
 
 export const adminAddress = "tz1Qej2aPmeZECBZHV5meTLC1X6DWRhSCoY4";
@@ -235,8 +235,8 @@ export const mintSet = async (socket: Socket, set: string, minting: string) => {
         await mongoClient.connect();
         const db = mongoClient.db("packs");
         const collection = db.collection(name);
-        const results = collection.find();
-        const count = await results.count();
+        // MongoDB 6.x: use countDocuments() instead of deprecated count()
+        const count = await collection.countDocuments();
         if (count === 0) {
             console.log("Generating packs...");
 
@@ -328,7 +328,8 @@ export const mintSet = async (socket: Socket, set: string, minting: string) => {
                 }
 
                 // Verify db total matches.
-                const count = await collection.find({tokenIds: tokenId}).count();
+                // MongoDB 6.x: use countDocuments() instead of deprecated count()
+                const count = await collection.countDocuments({tokenIds: tokenId});
                 const expected = lotsTotals[lotIndex][cardIndex];
                 if (count !== expected) {
                     throw(`Mismatch: id=${tokenId} (${count} vs ${expected})`);
@@ -340,7 +341,7 @@ export const mintSet = async (socket: Socket, set: string, minting: string) => {
                 batch.withContractCall(contract.methodsObject.mint({
                     address: publicKeyHash,
                     amount: count,
-                    metadata: MichelsonMap.fromLiteral({'': char2Bytes(metadataUri)}),
+                    metadata: MichelsonMap.fromLiteral({'': stringToBytes(metadataUri)}),
                     token_id: tokenId
                 }));
             }

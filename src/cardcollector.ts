@@ -1,6 +1,6 @@
 import axios from "axios";
 import { indexerUrl, fa2Contract } from "./contracts";
-import { bytes2Char } from "@taquito/utils";
+import { bytesToString } from "@taquito/utils";
 import { addOwned, clearOwned, registerCard } from "./cards";
 import { totalCards } from "./tarot";
 
@@ -68,7 +68,7 @@ class CardCollector
             const promises = [];
             for (let entry of data) {
                 const token_id = parseInt(entry.token_id);
-                const ipfsUri = bytes2Char(entry.token_info['']);
+                const ipfsUri = bytesToString(entry.token_info['']);
                 const amount = amounts.get(token_id);
                 if (amount) {
                     for (let i = 0; i < amount; i++) {

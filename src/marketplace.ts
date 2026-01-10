@@ -91,7 +91,8 @@ export const openPack = async (socket: Socket, purchaserAddress: string, priceMu
             }
 */
             // Try again if someone else marked pending first.
-            if (result.value === null) {
+            // MongoDB 6.x returns the document directly instead of {value: document}
+            if (result === null) {
                 console.log(`Attempt #${attempts+1} failed, trying again...`);
                 continue;
             }
@@ -104,13 +105,13 @@ export const openPack = async (socket: Socket, purchaserAddress: string, priceMu
             const escrow = await Tezos.contract.at(escrowContract);
             const batch = Tezos.contract.batch()
                 // TODO: Evaluate expense.
-                .withContractCall(fa2.methods.update_operators(result.value.tokenIds.map((id: number) => (
+                .withContractCall(fa2.methodsObject.update_operators(result.tokenIds.map((id: number) => (
                     { add_operator: { operator: escrowContract, token_id: id, owner: adminAddress } }
                 ))))
-                .withContractCall(escrow.methodsObject.redeem_funds({ 
+                .withContractCall(escrow.methodsObject.redeem_funds({
                     to: purchaserAddress,
-                    ids: result.value.tokenIds,
-                    amount: escrowAmount                
+                    ids: result.tokenIds,
+                    amount: escrowAmount
                 }));
 
             const batchOp = await batch.send();
