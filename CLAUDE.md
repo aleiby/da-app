@@ -2,6 +2,27 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Project Vision & Constraints
+
+Digital Arcana is intended to be a self-sustaining, community-owned card game. Key principles:
+
+### Business Model
+- **Free-to-play**: Anyone can play with a default deck at no cost
+- **Self-funded via ads**: Revenue from in-game advertising should cover hosting costs (no subscriptions, no business deals requiring ongoing relationships)
+- **Premium optional**: Players can purchase NFT card packs for collectible/premium decks
+- **Open-source**: Code remains public; succession via private key transfer (similar to Hic et Nunc model)
+
+### Current Status
+- **Prototype stage**: Functional gameplay but not production-ready
+- **Hosting**: Previously on Qovery/AWS, needs new cost-effective hosting solution
+- **Monetization**: Original "ads on card artwork" concept rejected by Google Ads; exploring gaming-specific ad networks (AdinPlay, Venatus, MonetizeMore)
+
+### Decision Guidelines
+When making technical decisions, consider:
+1. **Cost efficiency** - Minimize hosting/operational costs; ad revenue must exceed expenses
+2. **Simplicity** - Avoid over-engineering; this is a community project, not enterprise software
+3. **Independence** - Prefer solutions that don't create vendor lock-in or require ongoing business relationships
+
 ## Commands
 
 ### Build & Test
@@ -35,7 +56,7 @@ The Express server hosts both the Socket.io server and React build in production
 1. `/browser` - Browser client communication (pack purchases, minting)
 2. Default namespace - Unity client connections for gameplay
 
-Redis client is initialized at server startup and shared across modules via export. Environment-based configuration uses `QOVERY_REDIS_*` environment variables in production.
+Redis client is initialized at server startup and shared across modules via export. Environment-based configuration uses `QOVERY_REDIS_*` environment variables (legacy; new hosting TBD - see issue da-app-8tm).
 
 #### Connection Management (src/connection.ts)
 Each Socket.io connection creates a `Connection` instance that:
