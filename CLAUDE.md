@@ -36,8 +36,8 @@ When making technical decisions, consider:
 
 ### Build & Test
 - `npm run build` - Build React client for production
-- `npm test` - Run all tests with AVA + c8 coverage
-- `npx ava src/tests/test.ts --match "test name"` - Run a specific test by name
+- `npm test` - Run all tests with Vitest + v8 coverage
+- `npx vitest run --testNamePattern "test name"` - Run a specific test by name
 - `npm run test-dev` - Run tests in watch mode
 - `npm run test:contracts` - Run SmartPy contract tests (requires SmartPy installation)
 
