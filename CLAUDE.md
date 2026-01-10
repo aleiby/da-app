@@ -10,7 +10,16 @@ Digital Arcana is intended to be a self-sustaining, community-owned card game. K
 - **Free-to-play**: Anyone can play with a default deck at no cost
 - **Self-funded via ads**: Revenue from in-game advertising should cover hosting costs (no subscriptions, no business deals requiring ongoing relationships)
 - **Premium optional**: Players can purchase NFT card packs for collectible/premium decks
+- **Creator revenue sharing**:
+  - **Artists**: NFT contracts include royalty percentages for card set artwork creators on future sales
+  - **Game designers**: Rule sets will be stored on-chain as NFTs; creators earn from purchases
 - **Open-source**: Code remains public; succession via private key transfer (similar to Hic et Nunc model)
+
+### Future: Scripting Language for Rule Sets
+A planned scripting language will allow community members to create custom card game rules. These rule sets will be:
+- Stored on the Tezos blockchain as NFTs
+- Purchasable/sellable by players
+- Revenue-sharing with the rule set creator
 
 ### Current Status
 - **Prototype stage**: Functional gameplay but not production-ready
