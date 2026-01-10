@@ -108,3 +108,119 @@ test('players', async t => {
     t.is(seatB, "B");
     t.not(await getPlayerSeat(tableId, "PlayerC"), "C");
 });
+
+// ============================================================
+// Server Integration Tests
+// These tests verify the Express server and Socket.io endpoints
+// ============================================================
+
+import { io as ioClient, Socket } from 'socket.io-client';
+
+const SERVER_URL = 'http://localhost:8080';
+
+// Helper to wait for server to be ready
+async function waitForServer(maxAttempts = 30): Promise<boolean> {
+    for (let i = 0; i < maxAttempts; i++) {
+        try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 1000);
+            const response = await fetch(`${SERVER_URL}/ping`, { signal: controller.signal });
+            clearTimeout(timeoutId);
+            if (response.ok) return true;
+        } catch {
+            // Server not ready yet
+        }
+        await new Promise(resolve => setTimeout(resolve, 500));
+    }
+    return false;
+}
+
+test.serial('server /ping endpoint responds', async (t) => {
+    const ready = await waitForServer();
+    t.true(ready, 'Server should be running');
+
+    const response = await fetch(`${SERVER_URL}/ping`);
+    const text = await response.text();
+    t.is(text, 'pong', '/ping endpoint should respond with "pong"');
+});
+
+test.serial('Socket.io default namespace accepts connections', async (t) => {
+    return new Promise<void>((resolve, reject) => {
+        const socket: Socket = ioClient(SERVER_URL, {
+            transports: ['websocket'],
+            timeout: 5000
+        });
+
+        const timeout = setTimeout(() => {
+            socket.close();
+            reject(new Error('Connection timeout'));
+        }, 5000);
+
+        socket.on('connect', () => {
+            clearTimeout(timeout);
+            t.pass('Socket.io default namespace connected successfully');
+            socket.close();
+            resolve();
+        });
+
+        socket.on('connect_error', (err) => {
+            clearTimeout(timeout);
+            socket.close();
+            reject(err);
+        });
+    });
+});
+
+test.serial('Socket.io /browser namespace accepts connections', async (t) => {
+    return new Promise<void>((resolve, reject) => {
+        const socket: Socket = ioClient(`${SERVER_URL}/browser`, {
+            transports: ['websocket'],
+            timeout: 5000
+        });
+
+        const timeout = setTimeout(() => {
+            socket.close();
+            reject(new Error('Connection timeout'));
+        }, 5000);
+
+        socket.on('connect', () => {
+            clearTimeout(timeout);
+            t.pass('Socket.io /browser namespace connected successfully');
+            socket.close();
+            resolve();
+        });
+
+        socket.on('connect_error', (err) => {
+            clearTimeout(timeout);
+            socket.close();
+            reject(err);
+        });
+    });
+});
+
+test.serial('Socket.io /browser namespace emits isDevelopment flag', async (t) => {
+    return new Promise<void>((resolve, reject) => {
+        const socket: Socket = ioClient(`${SERVER_URL}/browser`, {
+            transports: ['websocket'],
+            timeout: 5000
+        });
+
+        const timeout = setTimeout(() => {
+            socket.close();
+            reject(new Error('isDevelopment event not received'));
+        }, 5000);
+
+        socket.on('isDevelopment', (isDev: boolean) => {
+            clearTimeout(timeout);
+            t.true(isDev, 'isDevelopment flag should be true in development mode');
+            socket.close();
+            resolve();
+        });
+
+        socket.on('connect_error', (err) => {
+            clearTimeout(timeout);
+            socket.close();
+            reject(err);
+        });
+    });
+});
