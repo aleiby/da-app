@@ -13,6 +13,9 @@
 /private
 /sets
 
+# installation files
+.redis-install/
+
 # misc
 .DS_Store
 .env.local

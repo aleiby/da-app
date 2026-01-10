@@ -10,7 +10,13 @@ https://digitalarcana.xyz/ (raise or lower piano top to adjust volume)
 [![Digital Arcana Encode x Tezos Hackathon (Extended)](img/davideo.png)](https://youtu.be/XqrJaPFfyTg "Digital Arcana Encode x Tezos Hackathon (Extended)
 ")
 
-### Introduction
+## Getting Started
+
+- **[Quick Start Guide](QUICKSTART.md)** - Get up and running in under 10 minutes
+- **[Complete Setup Documentation](SETUP.md)** - Detailed installation and configuration guide
+- **[Architecture & Development Guide](CLAUDE.md)** - For AI agents and developers
+
+## Introduction
 
 Digital Arcana is a platform born from the love of tarot art and a desire to utilize it in games.  Providing distraction in turbulent times, teaching rule-based learning principles, and fostering competition in a structured environment are just a few of the great aspects of games.  They even channel conflict in constructive directions and foster creativity.
 
