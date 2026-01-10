@@ -9,6 +9,16 @@ export default defineConfig({
       include: ['events', 'stream', 'crypto', 'buffer', 'util', 'process', 'http', 'https'],
     }),
   ],
+  optimizeDeps: {
+    include: [
+      '@airgap/beacon-sdk',
+      '@airgap/beacon-types',
+      '@airgap/beacon-core',
+      '@airgap/beacon-dapp',
+      '@airgap/beacon-utils',
+      '@taquito/beacon-wallet',
+    ],
+  },
   build: {
     outDir: 'build',
     assetsDir: 'static',
