@@ -4,7 +4,7 @@ Get up and running with Digital Arcana in under 10 minutes.
 
 ## Prerequisites
 
-- Node.js v18+ and npm v10+
+- Node.js v18.x and npm v10+ (use `nvm install` or `fnm install` to match `.nvmrc`)
 - Redis server
 - MongoDB Atlas account
 
@@ -65,6 +65,7 @@ npm run start-client
 npm run server-dev      # Start backend with auto-reload
 npm run start-client    # Start React dev server
 npm run redis-restart   # Restart Redis
+npm run dev:reset       # Reset local development state (Redis + optional MongoDB)
 
 # Testing
 npm test                # Run all tests with coverage
@@ -74,6 +75,27 @@ npm run test-dev        # Run tests in watch mode
 npm run build          # Build React app
 npm start              # Start production server
 ```
+
+## Resetting Development State
+
+When testing fresh game sessions or debugging, you may want to reset all local state:
+
+```bash
+# Reset Redis data (prompts for confirmation)
+npm run dev:reset
+
+# Skip confirmation prompt
+npm run dev:reset -- -y
+
+# Also reset MongoDB test collections
+npm run dev:reset -- --include-mongodb
+```
+
+The reset script:
+- Flushes all Redis keys
+- Optionally clears MongoDB test collections
+- Cleans up Redis data files (dump.rdb, appendonly.aof)
+- Has safety guards to prevent running in production
 
 ## What You Need
 

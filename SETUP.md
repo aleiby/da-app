@@ -16,7 +16,7 @@ This guide provides comprehensive instructions for setting up the Digital Arcana
 
 ### Required Software
 
-- **Node.js**: v18.x or higher (tested with v18.20.8)
+- **Node.js**: v18.x (tested with v18.20.8) - see [Node.js Version Management](#nodejs-version-management) below
 - **npm**: v10.x or higher (tested with v10.8.2)
 - **Redis**: v6.x or higher (for real-time game state and session management)
 - **MongoDB**: v4.x or higher (for card pack inventory)
@@ -24,8 +24,37 @@ This guide provides comprehensive instructions for setting up the Digital Arcana
 
 ### Recommended Tools
 
+- **nvm** or **fnm**: For Node.js version management (strongly recommended)
 - **nodemon**: For server development (auto-restart on changes)
 - **WSL2** (Windows users): For running Redis and development environment
+
+### Node.js Version Management
+
+This project includes an `.nvmrc` file specifying the required Node.js version. We strongly recommend using a version manager to ensure consistency across development environments.
+
+#### Using nvm (Node Version Manager)
+
+```bash
+# Install nvm (if not already installed)
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
+
+# In the project directory, install and use the correct Node.js version
+nvm install
+nvm use
+```
+
+#### Using fnm (Fast Node Manager)
+
+```bash
+# Install fnm (if not already installed)
+curl -fsSL https://fnm.vercel.app/install | bash
+
+# In the project directory, install and use the correct Node.js version
+fnm install
+fnm use
+```
+
+Both tools will automatically detect the `.nvmrc` file and use the specified Node.js version.
 
 ## System Requirements
 
@@ -198,8 +227,16 @@ If you need to deploy fresh contracts:
 
 1. **Set up Tezos account:**
    ```bash
-   # Get testnet tez from faucet
-   # Export private key
+   # Generate a new testnet account
+   npm run generate-tezos-account
+
+   # This will output:
+   # - A 24-word mnemonic (save this securely as backup)
+   # - The account address (tz1...)
+   # - The private key (edsk...)
+
+   # Fund the account at https://faucet.ghostnet.teztnets.com/
+   # Update private/secrets.js with the private key
    ```
 
 2. **Deploy contracts:**
