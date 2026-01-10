@@ -61,7 +61,8 @@
     "generate-tezos-account": "npx ts-node ./scripts/generate-tezos-account.ts",
     "deploy-contracts": "npx ts-node ./scripts/deploy-contracts.ts",
     "prepare": "husky",
-    "bootstrap": "./scripts/bootstrap.sh"
+    "bootstrap": "bash scripts/bootstrap.sh",
+    "check-setup": "bash scripts/check-setup.sh"
   },
   "browserslist": {
     "production": [

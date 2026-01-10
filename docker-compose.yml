@@ -1,0 +1,67 @@
+# Digital Arcana - Docker Compose Development Environment
+#
+# Quick start:
+#   docker compose up
+#
+# This starts Redis, MongoDB, and the app in containers.
+# For development, you may prefer running just the services:
+#   docker compose up redis mongodb
+# Then run the app locally with: npm run server-dev
+
+services:
+  # Redis - Real-time game state and session management
+  redis:
+    image: redis:7.0-alpine
+    container_name: da-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+
+  # MongoDB - Card pack inventory and user data
+  mongodb:
+    image: mongo:7.0
+    container_name: da-mongodb
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: digitalarcana
+      MONGO_INITDB_ROOT_PASSWORD: localdev
+      MONGO_INITDB_DATABASE: digitalarcana
+    volumes:
+      - mongodb-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # Node.js Application (optional - for production-like testing)
+  app:
+    build: .
+    container_name: da-app
+    ports:
+      - "8080:8080"
+    environment:
+      - NODE_ENV=development
+      - REDIS_URL=redis://redis:6379
+      - MONGODB_URI=mongodb://digitalarcana:localdev@mongodb:27017/digitalarcana?authSource=admin
+    depends_on:
+      redis:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+    volumes:
+      # Mount private config (optional - create if using local secrets)
+      - ./private:/app/private:ro
+    profiles:
+      - full  # Only starts with: docker compose --profile full up
+
+volumes:
+  redis-data:
+  mongodb-data:

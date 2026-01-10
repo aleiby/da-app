@@ -109,6 +109,7 @@ echo ""
 echo -e "${BLUE}[3/5] Checking Redis...${NC}"
 
 REDIS_CLI="$PROJECT_ROOT/.redis-install/redis-7.0.15/src/redis-cli"
+REDIS_SERVER="$PROJECT_ROOT/.redis-install/redis-7.0.15/src/redis-server"
 
 # Check for system Redis CLI if local not available
 if [ ! -f "$REDIS_CLI" ]; then
@@ -119,7 +120,7 @@ fi
 
 # Check if Redis is running
 REDIS_RUNNING=false
-if [ -n "$REDIS_CLI" ] && [ -f "$REDIS_CLI" ] || command -v redis-cli &> /dev/null; then
+if [ -n "$REDIS_CLI" ] && ([ -f "$REDIS_CLI" ] || command -v redis-cli &> /dev/null); then
     if $REDIS_CLI ping > /dev/null 2>&1; then
         REDIS_RUNNING=true
         echo -e "  ${GREEN}Redis is already running${NC}"
@@ -127,13 +128,33 @@ if [ -n "$REDIS_CLI" ] && [ -f "$REDIS_CLI" ] || command -v redis-cli &> /dev/nu
 fi
 
 if [ "$REDIS_RUNNING" = "false" ]; then
-    # Check if local Redis is installed
-    REDIS_SERVER="$PROJECT_ROOT/.redis-install/redis-7.0.15/src/redis-server"
-    if [ -f "$REDIS_SERVER" ]; then
-        echo "  Starting local Redis server in background..."
+    # Check if local Redis is installed, if not try to install it
+    if [ ! -f "$REDIS_SERVER" ]; then
+        if ! command -v redis-server &> /dev/null; then
+            echo "  Redis not found. Attempting to install locally..."
+            if bash "$SCRIPT_DIR/install-redis.sh"; then
+                echo -e "  ${GREEN}Redis installed successfully${NC}"
+            else
+                echo -e "${YELLOW}Warning: Could not auto-install Redis${NC}"
+                echo "  See REDIS_SETUP.md for manual installation instructions"
+                echo "  Or install system Redis and run: npm run redis-restart"
+                ERRORS=$((ERRORS + 1))
+            fi
+        else
+            REDIS_SERVER="redis-server"
+        fi
+    fi
+
+    # Try to start Redis if we have a server binary
+    if [ -f "$REDIS_SERVER" ] || command -v redis-server &> /dev/null; then
+        echo "  Starting Redis server in background..."
         if [ -f "$PROJECT_ROOT/redis.conf" ]; then
             nohup $REDIS_SERVER "$PROJECT_ROOT/redis.conf" > /dev/null 2>&1 &
             sleep 2
+            # Re-check which CLI to use
+            if [ ! -f "$REDIS_CLI" ] && command -v redis-cli &> /dev/null; then
+                REDIS_CLI="redis-cli"
+            fi
             if $REDIS_CLI ping > /dev/null 2>&1; then
                 echo -e "  ${GREEN}Redis started successfully${NC}"
             else
@@ -145,11 +166,6 @@ if [ "$REDIS_RUNNING" = "false" ]; then
             echo -e "${YELLOW}Warning: redis.conf not found${NC}"
             ERRORS=$((ERRORS + 1))
         fi
-    else
-        echo -e "${YELLOW}Warning: Redis is not installed locally${NC}"
-        echo "  See REDIS_SETUP.md for installation instructions"
-        echo "  Or install system Redis and run: npm run redis-restart"
-        ERRORS=$((ERRORS + 1))
     fi
 fi
 

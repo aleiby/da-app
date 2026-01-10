@@ -17,6 +17,10 @@ export default defineConfig({
       },
     },
     fileParallelism: false,
+    // Setup files for test environment
+    setupFiles: ['./src/tests/setup.ts'],
+    // Global setup runs in main vitest process before tests
+    globalSetup: './vitest.global-setup.ts',
     // Don't process server-side node_modules
     server: {
       deps: {

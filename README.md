@@ -25,6 +25,69 @@ For more detailed guides:
 - **[Complete Setup Documentation](SETUP.md)** - Detailed installation and configuration guide
 - **[Architecture & Development Guide](CLAUDE.md)** - For AI agents and developers
 
+### Alternative: Docker Compose
+
+For a containerized development environment with Redis and MongoDB:
+
+```bash
+# Start Redis and MongoDB services
+docker compose up -d redis mongodb
+
+# Then run the app locally
+npm install
+npm run server-dev
+```
+
+Or run everything in containers:
+
+```bash
+docker compose --profile full up
+```
+
+### Verifying Your Setup
+
+After bootstrap, verify your environment is correctly configured:
+
+```bash
+npm run check-setup
+```
+
+This checks Node.js version, Redis connectivity, MongoDB configuration, and required config files.
+
+### Automatic Node Version Switching
+
+This project uses `.nvmrc` to specify the required Node.js version. Configure your shell to automatically switch versions when entering the project directory:
+
+**nvm (Node Version Manager)**
+
+Add to your `~/.bashrc`, `~/.zshrc`, or equivalent:
+
+```bash
+# Automatic nvm use when entering a directory with .nvmrc
+autoload -U add-zsh-hook
+load-nvmrc() {
+  local nvmrc_path="$(nvm_find_nvmrc)"
+  if [ -n "$nvmrc_path" ]; then
+    local nvmrc_node_version=$(nvm version "$(cat "${nvmrc_path}")")
+    if [ "$nvmrc_node_version" = "N/A" ]; then
+      nvm install
+    elif [ "$nvmrc_node_version" != "$(nvm version)" ]; then
+      nvm use
+    fi
+  fi
+}
+add-zsh-hook chpwd load-nvmrc
+load-nvmrc
+```
+
+**fnm (Fast Node Manager)**
+
+fnm has built-in support. Add to your shell config:
+
+```bash
+eval "$(fnm env --use-on-cd)"
+```
+
 ## Introduction
 
 Digital Arcana is a platform born from the love of tarot art and a desire to utilize it in games.  Providing distraction in turbulent times, teaching rule-based learning principles, and fostering competition in a structured environment are just a few of the great aspects of games.  They even channel conflict in constructive directions and foster creativity.
