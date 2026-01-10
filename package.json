@@ -54,8 +54,10 @@
     "start-client": "react-scripts start",
     "test-client": "react-scripts test",
     "build": "react-scripts build",
-    "test": "c8 ava",
+    "test": "c8 --check-coverage ava",
     "test-dev": "npx ava --watch",
+    "typecheck": "tsc --noEmit",
+    "typecheck:watch": "tsc --noEmit --watch",
     "eject": "react-scripts eject",
     "redis-start": "./start-redis.sh",
     "redis-restart": "sudo service redis-server restart",
@@ -94,5 +96,12 @@
       "ts-node/register"
     ],
     "timeout": "1m"
+  },
+  "c8": {
+    "check-coverage": true,
+    "lines": 37,
+    "branches": 30,
+    "functions": 35,
+    "statements": 37
   }
 }
