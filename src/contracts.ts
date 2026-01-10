@@ -1,4 +1,19 @@
-import { NetworkType } from "@airgap/beacon-sdk";
+/**
+ * Tezos Network Configuration
+ *
+ * NOTE: We define NetworkType locally to avoid importing @airgap/beacon-sdk
+ * on the server side. The beacon SDK uses ESM-only dependencies that are
+ * incompatible with ts-node's CommonJS mode.
+ */
+
+// Mirror of @airgap/beacon-sdk NetworkType enum values
+export enum NetworkType {
+  MAINNET = 'mainnet',
+  GHOSTNET = 'ghostnet',
+  // Deprecated networks (for reference only)
+  HANGZHOUNET = 'hangzhounet',
+  ITHACANET = 'ithacanet',
+}
 
 /**
  * Tezos Network Configuration
@@ -18,32 +33,32 @@ export const network = NetworkType.GHOSTNET;
 // RPC and API endpoints per network
 const networkConfig = {
   [NetworkType.GHOSTNET]: {
-    rpcUrl: "https://ghostnet.smartpy.io",
-    indexerUrl: "https://api.ghostnet.tzkt.io/v1/contracts/",
+    rpcUrl: 'https://ghostnet.smartpy.io',
+    indexerUrl: 'https://api.ghostnet.tzkt.io/v1/contracts/',
     // TODO: Deploy contracts to Ghostnet and update these addresses
     // See: scripts/deploy-contracts.ts for deployment instructions
-    fa2Contract: "",  // Deploy FA2 contract and update
-    escrowContract: "", // Deploy Escrow/Marketplace contract and update
+    fa2Contract: '', // Deploy FA2 contract and update
+    escrowContract: '', // Deploy Escrow/Marketplace contract and update
   },
   [NetworkType.MAINNET]: {
-    rpcUrl: "https://mainnet.smartpy.io",
-    indexerUrl: "https://api.tzkt.io/v1/contracts/",
+    rpcUrl: 'https://mainnet.smartpy.io',
+    indexerUrl: 'https://api.tzkt.io/v1/contracts/',
     // Production contract addresses (not yet deployed)
-    fa2Contract: "",
-    escrowContract: "",
+    fa2Contract: '',
+    escrowContract: '',
   },
   // Legacy configuration (deprecated networks - for reference only)
   [NetworkType.HANGZHOUNET]: {
-    rpcUrl: "https://hangzhounet.api.tez.ie/",
-    indexerUrl: "https://api.hangzhou2net.tzkt.io/v1/contracts/",
-    fa2Contract: "KT1N1a7TA1rEedQo2pEQXhuVgSQNvgRWKkdJ",
-    escrowContract: "KT1WZY4nrsHbQn6VHX6Ny1X1LYcPb7mss9iK",
+    rpcUrl: 'https://hangzhounet.api.tez.ie/',
+    indexerUrl: 'https://api.hangzhou2net.tzkt.io/v1/contracts/',
+    fa2Contract: 'KT1N1a7TA1rEedQo2pEQXhuVgSQNvgRWKkdJ',
+    escrowContract: 'KT1WZY4nrsHbQn6VHX6Ny1X1LYcPb7mss9iK',
   },
   [NetworkType.ITHACANET]: {
-    rpcUrl: "https://ithacanet.smartpy.io/",
-    indexerUrl: "https://api.ithacanet.tzkt.io/v1/contracts/",
-    fa2Contract: "KT1FhGBLyxPTnAiU41GPTPR1FzKGVajgKrme",
-    escrowContract: "KT19r4jkRtopWqEVVSqyvuSYQ7Z73vPQdfGT",
+    rpcUrl: 'https://ithacanet.smartpy.io/',
+    indexerUrl: 'https://api.ithacanet.tzkt.io/v1/contracts/',
+    fa2Contract: 'KT1FhGBLyxPTnAiU41GPTPR1FzKGVajgKrme',
+    escrowContract: 'KT19r4jkRtopWqEVVSqyvuSYQ7Z73vPQdfGT',
   },
 };
 
@@ -59,6 +74,6 @@ export const escrowContract = config.escrowContract;
 if (!fa2Contract || !escrowContract) {
   console.warn(
     `WARNING: Contract addresses not configured for ${network}. ` +
-    `Deploy contracts using SmartPy IDE or scripts/deploy-contracts.ts`
+      `Deploy contracts using SmartPy IDE or scripts/deploy-contracts.ts`
   );
 }
