@@ -209,26 +209,33 @@ MongoDB is used for:
 
 Digital Arcana uses Tezos smart contracts for NFT management and escrow.
 
-### Current Testnet Configuration (Hangzhounet)
+### Current Testnet: Ghostnet
 
-Located in `src/contracts.ts`:
+The application is configured to use **Ghostnet**, the long-running Tezos testnet.
+Configuration is in `src/contracts.ts`:
 
 ```typescript
-export const fa2Contract = "KT1N1a7TA1rEedQo2pEQXhuVgSQNvgRWKkdJ";
-export const escrowContract = "KT1WZY4nrsHbQn6VHX6Ny1X1LYcPb7mss9iK";
-export const indexerUrl = "https://api.hangzhou2net.tzkt.io/v1/contracts/";
-export const rpcUrl = "https://hangzhounet.api.tez.ie/";
-export const network = NetworkType.HANGZHOUNET;
+export const network = NetworkType.GHOSTNET;
+export const rpcUrl = "https://ghostnet.smartpy.io";
+export const indexerUrl = "https://api.ghostnet.tzkt.io/v1/contracts/";
 ```
 
-### Deploying New Contracts
+**Useful Links:**
+- Faucet: https://faucet.ghostnet.teztnets.com/
+- Block Explorer: https://ghostnet.tzkt.io/
+- RPC Endpoint: https://ghostnet.smartpy.io
 
-If you need to deploy fresh contracts:
+**Note:** Previous testnets (Hangzhounet, Ithacanet) are deprecated.
+Legacy contract addresses are preserved in `src/contracts.ts` for reference.
 
-1. **Set up Tezos account:**
+### Deploying Smart Contracts
+
+To deploy the FA2 and Escrow/Marketplace contracts:
+
+1. **Set up a Tezos testnet account:**
    ```bash
    # Generate a new testnet account
-   npm run generate-tezos-account
+   npx ts-node scripts/generate-tezos-account.ts
 
    # This will output:
    # - A 24-word mnemonic (save this securely as backup)
@@ -239,14 +246,36 @@ If you need to deploy fresh contracts:
    # Update private/secrets.js with the private key
    ```
 
-2. **Deploy contracts:**
-   - FA2 contract: `python/contracts/fa2.py`
-   - Escrow contract: `python/contracts/escrow.py`
-   - Use SmartPy CLI or IDE: https://smartpy.io/
+2. **Check deployment readiness:**
+   ```bash
+   npx ts-node scripts/deploy-contracts.ts
+   ```
 
-3. **Update configuration:**
+3. **Deploy contracts using SmartPy IDE (recommended):**
+
+   **Step 1: Deploy FA2 Contract**
+   - Open https://smartpy.io/ide
+   - Paste contents of `python/contracts/fa2.py`
+   - Click "Run Code" to compile
+   - Under "FA2_comp" compilation target, click "Deploy Contract"
+   - Select Ghostnet network and connect wallet
+   - Save the deployed contract address (KT1...)
+
+   **Step 2: Deploy Escrow/Marketplace Contract**
+   - Open `python/contracts/escrow.py`
+   - Update the "Deploy" test section at bottom:
+     - Set `fa2Contract` to your FA2 address
+     - Set `adminAddress` to your admin wallet address
+   - Paste to SmartPy IDE and deploy to Ghostnet
+
+   **Step 3: Set Operator Permissions**
+   - Visit https://ghostnet.tzkt.io/{FA2_ADDRESS}
+   - Use "Interact" tab to call `update_operators`
+   - Add your admin account as operator for token transfers
+
+4. **Update configuration:**
    - Edit `src/contracts.ts` with new contract addresses
-   - Update `adminAddress` in `src/admin.ts`
+   - Update `adminAddress` in `src/admin.ts` if needed
 
 ### NFT.storage API Key
 

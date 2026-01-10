@@ -16,6 +16,7 @@
  * After generating, you'll need to:
  * 1. Fund the account at https://faucet.ghostnet.teztnets.com/
  * 2. Update private/secrets.js with the private key
+ * 3. Deploy contracts using: npx ts-node scripts/deploy-contracts.ts
  *
  * Usage:
  *   npx ts-node scripts/generate-tezos-account.ts
