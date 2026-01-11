@@ -52,6 +52,34 @@ Config in `playwright.config.ts` auto-starts the dev server.
 
 **Note**: Playwright reuses an existing server on port 3000 if running. Ensure the dev server has latest code (HMR should handle this) before verification.
 
+### E2E Wallet Testing
+
+The mock wallet (`e2e/mocks/beacon-wallet-mock.ts`) replaces `@taquito/beacon-wallet` during E2E tests, enabling automated testing without Beacon popup dialogs.
+
+**Two modes:**
+| Mode | Trigger | Behavior |
+|------|---------|----------|
+| Mock | `E2E_MOCK_WALLET=true` only | Fake operations, no network, fast |
+| Real Signer | + `VITE_E2E_WALLET_KEY=edsk...` | Actual Ghostnet transactions |
+
+**Running tests:**
+```bash
+# Mock mode (default, fast)
+npx playwright test e2e/wallet-connect.spec.ts
+
+# Real signer mode (actual Ghostnet transactions)
+export $(grep -v '^#' .env.test | xargs) && npx playwright test e2e/wallet-connect.spec.ts
+```
+
+**Funded test wallet:** A funded Ghostnet wallet is configured in `.env.test` (git-ignored):
+- Address: `tz1XMTb9x2xxagq9BZe8NZKHd7sp2iXmAxRj`
+- Used for real blockchain tests (pack purchases, etc.)
+
+**If wallet needs replacement or refunding:**
+1. Generate new wallet: `npx ts-node scripts/generate-tezos-account.ts`
+2. Fund via faucet: https://faucet.ghostnet.teztnets.com/
+3. Update `.env.test` with new address and key
+
 ### Development
 - `npm run start` - Start production server (`ts-node ./src/server.ts`)
 - `npm run start-client` - Start React development server (port 3000)
