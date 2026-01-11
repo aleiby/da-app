@@ -123,3 +123,85 @@ test.describe('Mock Wallet Integration', () => {
     expect(criticalErrors).toHaveLength(0);
   });
 });
+
+/**
+ * Real signer mode tests - require VITE_E2E_WALLET_KEY to be set.
+ * Run with: source .env.test && npx playwright test e2e/wallet-connect.spec.ts
+ */
+test.describe('Real Signer Mode', () => {
+  // Skip entire suite if not in real signer mode
+  test.beforeEach(async () => {
+    test.skip(
+      !process.env.VITE_E2E_WALLET_KEY,
+      'Requires VITE_E2E_WALLET_KEY for real signer mode'
+    );
+  });
+
+  test('initializes InMemorySigner with private key', async ({ page }) => {
+    const consoleLogs: string[] = [];
+
+    // Capture console output
+    page.on('console', (msg) => {
+      consoleLogs.push(msg.text());
+    });
+
+    // Navigate to app
+    await page.goto('/');
+
+    // Wait for app to load
+    await expect(page.locator('.App')).toBeVisible({ timeout: 10000 });
+
+    // Check console logs for real signer initialization
+    const realSignerInitialized = consoleLogs.some(
+      (log) => log.includes('[Mock BeaconWallet]') && log.includes('Real signer mode')
+    );
+    expect(realSignerInitialized).toBe(true);
+
+    // Verify signer was initialized
+    const signerInitialized = consoleLogs.some(
+      (log) => log.includes('[Mock BeaconWallet]') && log.includes('Signer initialized for address')
+    );
+    expect(signerInitialized).toBe(true);
+  });
+
+  test('uses correct wallet address from private key', async ({ page }) => {
+    const consoleLogs: string[] = [];
+
+    // Capture console output
+    page.on('console', (msg) => {
+      consoleLogs.push(msg.text());
+    });
+
+    // Navigate to app
+    await page.goto('/');
+
+    // Wait for app to load
+    await expect(page.locator('.App')).toBeVisible({ timeout: 10000 });
+
+    // Click Switch Account to trigger wallet connection
+    const switchAccountButton = page.getByRole('button', { name: 'Switch Account' });
+    await expect(switchAccountButton).toBeVisible({ timeout: 10000 });
+    await switchAccountButton.click();
+
+    // Wait for wallet connection
+    await page.waitForTimeout(2000);
+
+    // Verify REAL SIGNER mode is indicated in permissions log
+    const realSignerPermissions = consoleLogs.some(
+      (log) =>
+        log.includes('[Mock BeaconWallet]') &&
+        log.includes('Auto-approved permissions') &&
+        log.includes('REAL SIGNER')
+    );
+    expect(realSignerPermissions).toBe(true);
+
+    // If VITE_E2E_WALLET_ADDRESS is set, verify the address matches
+    const expectedAddress = process.env.VITE_E2E_WALLET_ADDRESS;
+    if (expectedAddress) {
+      const addressLog = consoleLogs.find(
+        (log) => log.includes('[Mock BeaconWallet]') && log.includes('Auto-approved permissions')
+      );
+      expect(addressLog).toContain(expectedAddress);
+    }
+  });
+});
