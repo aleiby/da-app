@@ -145,6 +145,18 @@ SmartPy tests for contract verification:
 - Socket.io for all real-time events (no polling)
 - Taquito for Tezos blockchain interactions
 
+### Game-Specific vs Shared Code
+**Critical**: Keep game-specific logic in `src/games/*.ts`, not in shared modules.
+
+- **Game-specific code** (`src/games/browse.ts`, `war.ts`, `solitaire.ts`): Card sorting, display rules, game flow, win conditions
+- **Shared code** (`cards.ts`, `cardtable.ts`, `marketplace.ts`, `connection.ts`): Card data, table management, purchases, connections
+
+**Rules:**
+1. Shared code must NOT assume which game is running or start/restart games
+2. Card sorting/filtering for a specific game belongs in that game's file, not `cards.ts`
+3. After actions like pack purchases, update data (Redis cache) but don't manipulate active games
+4. If you're importing from `src/games/` into shared code, reconsider the design
+
 ## Issue Tracking with bd (beads)
 
 This project uses **bd** for issue tracking. Run `bd onboard` to get started.

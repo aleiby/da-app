@@ -7,7 +7,6 @@ import { InMemorySigner } from '@taquito/signer';
 import { adminAddress } from './admin';
 import { isDevelopment } from './utils';
 import { refreshCards } from './cardcollector';
-import { newTable, beginGame } from './cardtable';
 
 // Choose a random pack to transfer to purchaser.
 export const openPack = async (
@@ -148,12 +147,9 @@ export const openPack = async (
       console.log(result);
       console.log('Done!');
 
-      // Refresh the card collection so new cards appear immediately without page refresh
-      await refreshCards(purchaserAddress);
-
-      // Restart Browse game to show newly acquired cards
-      const tableId = await newTable([purchaserAddress]);
-      beginGame('Browse', tableId);
+      // Refresh the card collection in the background so new cards are in Redis cache.
+      // They'll appear next time the player starts Browse or any game.
+      refreshCards(purchaserAddress);
 
       return true;
     }
