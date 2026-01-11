@@ -115,6 +115,10 @@ if (process.env.NODE_ENV !== 'development') {
 
 // Serve player names.
 app.get('/name/:userId', async (req: any, res: any) => {
+  // Allow cross-origin requests from React dev server
+  if (isDevelopment) {
+    res.set('Access-Control-Allow-Origin', 'http://localhost:3000');
+  }
   const player = await getPlayer(req.params.userId);
   const name = await getUserName(player ?? req.params.userId);
   res.end(name);
