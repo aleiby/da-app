@@ -116,10 +116,10 @@ The smart contracts are written in SmartPy and compile to Michelson for deployme
 
 #### Current Testnet: Ghostnet
 
-Contracts need to be deployed to Ghostnet. See [SETUP.md](SETUP.md#deploying-smart-contracts) for deployment instructions.
-
 - Block Explorer: https://ghostnet.tzkt.io/
 - Faucet: https://faucet.ghostnet.teztnets.com/
+- FA2: [KT1LqHTrLGvHx1yR33kiR1BSptmoC6F6FDNX](https://ghostnet.tzkt.io/KT1LqHTrLGvHx1yR33kiR1BSptmoC6F6FDNX)
+- Escrow: [KT1HpQ4nyGQuWZihE32V4A3Z13uN3wWJHKTi](https://ghostnet.tzkt.io/KT1HpQ4nyGQuWZihE32V4A3Z13uN3wWJHKTi)
 
 #### FA2 (NFT Token Contract)
 - SmartPy source: [python/contracts/fa2.py](python/contracts/fa2.py)
