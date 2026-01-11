@@ -81,6 +81,7 @@ function App() {
   }, []);
 
   const mintSet = () => browser.emit('mintSet');
+  const openPack = async () => browser.emit('openPack', await getWalletAddress());
   const switchAccount = async () => {
     await connectWallet();
     unityContext.send(gameManager, 'SetWalletAddress', await getWalletAddress());
