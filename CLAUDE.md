@@ -41,6 +41,17 @@ When making technical decisions, consider:
 - `npm run test-dev` - Run tests in watch mode
 - `npm run test:contracts` - Run SmartPy contract tests (requires SmartPy installation)
 
+### Playwright (Ad-hoc Verification)
+Use Playwright for browser-based verification (console warnings, UI behavior, etc.). Write test scripts in `e2e/` as needed.
+```bash
+npx playwright test e2e/my-check.spec.ts --reporter=list
+```
+Config in `playwright.config.ts` auto-starts the dev server.
+
+**Cleanup**: Delete one-off verification scripts after use. Keep scripts that would be useful for recurring checks (e.g., smoke tests, regression verification).
+
+**Note**: Playwright reuses an existing server on port 3000 if running. Ensure the dev server has latest code (HMR should handle this) before verification.
+
 ### Development
 - `npm run start` - Start production server (`ts-node ./src/server.ts`)
 - `npm run start-client` - Start React development server (port 3000)
@@ -175,6 +186,16 @@ bd create --title="..." --type=feature --priority=3
 bd dep add <new-issue-id> da-app-ke2
 ```
 This keeps future work out of `bd ready` until explicitly approved.
+
+### Labels for Grouping Related Issues
+Use labels to group related issues (e.g., `unity` for Unity-related work, `marketplace` for purchase flow issues). Labels help with filtering and discovery:
+```bash
+bd label add <issue-id> <label>      # Add label
+bd list --label=<label>              # Find issues with label
+bd label list-all                    # See all labels in use
+```
+
+If closing an issue should trigger review of related issues, document that in the issue's description as an "On close" instruction.
 
 ### No TODOs in Code
 Use bd issues instead of TODO/FIXME comments in code. Inline comments get lost; bd issues are tracked, searchable, and have dependencies. Brief contextual comments are fine (e.g., `// Set after deployment`), but actionable work items belong in bd.
