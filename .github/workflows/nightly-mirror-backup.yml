@@ -1,0 +1,39 @@
+name: Nightly mirror backup
+
+on:
+  schedule:
+    # GitHub cron runs in UTC. We run at both 11:00 and 12:00 UTC,
+    # then only proceed when it is 04:00 in America/Los_Angeles (Seattle time).
+    - cron: "0 11 * * *"
+    - cron: "0 12 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Only run at 4am Seattle time
+        run: |
+          set -euo pipefail
+          if [ "$(TZ=America/Los_Angeles date +%H)" != "04" ]; then
+            echo "Not 4am Pacific right now; exiting."
+            exit 0
+          fi
+
+      - name: Checkout full history (all branches + tags)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Mirror-push to backup repo
+        env:
+          MIRROR_TOKEN: ${{ secrets.MIRROR_TOKEN }}
+          TARGET_REPO: aleiby/da-app-backup
+        run: |
+          set -euo pipefail
+
+          git remote add backup "https://x-access-token:${MIRROR_TOKEN}@github.com/${TARGET_REPO}.git"
+          git push --mirror backup
