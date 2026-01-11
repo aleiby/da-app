@@ -58,6 +58,9 @@ Digital Arcana is a web platform for playing card games with NFT tarot cards on 
 - **Database**: Redis for real-time game state and session management, MongoDB for card pack inventory
 - **Blockchain**: Tezos (via Taquito library), SmartPy contracts (FA2 NFT standard + escrow)
 
+### Related Repositories
+- **Unity Client**: https://github.com/a-digitalarcana/unity - 3D card table (C# scripts in `Assets/Scripts/`)
+
 ### Key Architecture Components
 
 #### Server Architecture (src/server.ts)
