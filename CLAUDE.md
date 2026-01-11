@@ -264,6 +264,7 @@ When ending a work session, you MUST complete ALL steps below. Work is NOT compl
 5. **Clean up** - Clear stashes, prune remote branches
 6. **Verify** - All changes committed AND pushed
 7. **Hand off** - Provide context for next session
+8. **Learn from session** - Run `autoskill` to analyze corrections and preferences, propose skill updates
 
 **CRITICAL RULES:**
 - Work is NOT complete until `git push` succeeds
