@@ -22,26 +22,39 @@ When the user runs `/parallel-work`:
 4. **Spawn parallel agents** - Create one Task (general-purpose agent) per issue with these constraints:
    - Agent works ONLY in their assigned worktree directory
    - Agent can commit to their branch but must NOT push
-   - Agent can ONLY update their assigned issue (`bd update <their-id> ...`, `bd close <their-id>`)
+   - Agent can ONLY update their assigned issue status (`bd update <their-id> --status in_progress`)
    - Agent must NOT run `bd sync` or `git push/pull`
    - Agent should report any cross-issue changes needed (new issues, dependencies, etc.)
 5. **Aggregate results** - Wait for all agents, collect their outputs and cross-issue requests
-6. **Merge worktrees** - For each completed worktree:
+6. **Verify agent work** - For each agent, review their output to confirm:
+   - Task was actually completed (not just attempted)
+   - No errors or unresolved blockers reported
+   - Commits were made as expected
+
+   **If verification fails**: Spawn a new subagent to address the issue, providing:
+   - The original task context
+   - What the previous agent attempted
+   - Why verification failed (error messages, incomplete work, etc.)
+   - The same worktree (already has partial progress)
+
+   Repeat until verification succeeds or user intervention is required to make forward progress.
+
+7. **Merge worktrees** - For each verified worktree:
    ```bash
    git merge --no-ff "work/<issue-id>" -m "Merge work/<issue-id>: <issue-title>"
    ```
    Handle merge conflicts if they occur (may need to resolve manually or sequentially)
-7. **Process cross-issue changes** - Create any new issues, add dependencies as requested by agents
-8. **Cleanup worktrees** - Remove all worktrees:
+8. **Process cross-issue changes** - Create any new issues, add dependencies as requested by agents
+9. **Cleanup worktrees** - Remove all worktrees:
    ```bash
    git worktree remove "$WORKTREE_BASE/<issue-id>"
    git branch -d "work/<issue-id>"
    ```
-9. **Land the plane** - Execute the session close protocol:
-   - Run quality gates if code changed (tests, linters, builds)
-   - Batch close/update issues: `bd close <id1> <id2> ...`
-   - Serialize git operations: `git pull --rebase && bd sync && git push`
-   - Verify push succeeded: `git status`
+10. **Land the plane** - Execute the session close protocol:
+    - Run quality gates if code changed (tests, linters, builds)
+    - Only close issues that were verified successful: `bd close <id1> <id2> ...`
+    - Serialize git operations: `git pull --rebase && bd sync && git push`
+    - Verify push succeeded: `git status`
 
 ## Parallel Agent Instructions
 
@@ -62,7 +75,7 @@ IMPORTANT CONSTRAINTS:
 - Start by running: bd show <ISSUE_ID> to understand the full requirements
 - Update status: bd update <ISSUE_ID> --status in_progress (when starting)
 - When done, commit your changes: git add -A && git commit -m "<descriptive message>"
-- Close when done: bd close <ISSUE_ID>
+- DO NOT close your issue - the orchestrator will verify and close after merge
 
 If you need to:
 - Create new issues (follow-up work, blockers discovered, etc.)
@@ -126,10 +139,12 @@ Done! All 3 issues completed and pushed to remote.
 1. **Worktree isolation** - Each agent works in its own git worktree with its own branch
 2. **All agents spawn in parallel** - Use a single message with multiple Task tool invocations
 3. **Commit but don't push** - Agents commit locally; orchestrator merges and pushes
-4. **Controlled issue updates** - Each agent only updates their assigned issue
-5. **Single merge point** - All branches merged serially at the end to handle conflicts
-6. **Single sync point** - All git/beads operations happen serially at the end
-7. **Follow session close protocol** - Always verify `git push` succeeded before declaring done
+4. **Controlled issue updates** - Each agent only updates their assigned issue (status only, not close)
+5. **Orchestrator closes issues** - Subagents DO NOT close their issues; orchestrator verifies work completed successfully after merge, then closes
+6. **Retry on failure** - If verification fails, spawn a new subagent with failure context; repeat until success or user intervention needed
+7. **Single merge point** - All branches merged serially at the end to handle conflicts
+8. **Single sync point** - All git/beads operations happen serially at the end
+9. **Follow session close protocol** - Always verify `git push` succeeded before declaring done
 
 ## Merge Conflict Handling
 
@@ -142,11 +157,14 @@ If merge conflicts occur:
 ## Error Handling
 
 If any agent fails or gets blocked:
-- Continue with other agents
-- Report the failure
-- Skip merging for failed branches
-- Create blocking issues if needed
+- Continue with other agents while retrying the failed one
+- Spawn a new subagent with:
+  - Original task context
+  - Previous attempt details and failure reason
+  - Same worktree (preserves partial progress)
+- Retry until success or user intervention required
 - Don't let one failure stop the entire workflow
+- Only skip merging if retries exhausted and user confirms to proceed without
 
 ## Cleanup on Failure
 
