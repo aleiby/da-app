@@ -8,7 +8,7 @@ export default defineConfig({
     headless: true,
   },
   webServer: {
-    command: 'npm run start-client',
+    command: 'E2E_MOCK_WALLET=true npm run start-client',
     url: 'http://localhost:3000',
     reuseExistingServer: true,
     timeout: 60000,
