@@ -153,6 +153,14 @@ This project uses **bd** for issue tracking. Run `bd onboard` to get started.
 - `bd close <id>` - Complete work
 - `bd sync` - Sync with git
 
+### Future Work Gate
+When creating issues for future/deferred work (not immediate priorities), add a dependency on the **Future Work Gate** (`da-app-ke2`):
+```bash
+bd create --title="..." --type=feature --priority=3
+bd dep add <new-issue-id> da-app-ke2
+```
+This keeps future work out of `bd ready` until explicitly approved.
+
 ### Landing the Plane (Session Completion)
 
 When ending a work session, you MUST complete ALL steps below. Work is NOT complete until `git push` succeeds.
