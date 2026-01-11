@@ -18,7 +18,9 @@ export const openPack = async (
   // Get secrets
   let mongodbUri, signerKey;
   if (isDevelopment) {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const mongodb = require('../private/mongodb');
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const secrets = require('../private/secrets');
     mongodbUri = mongodb.uri;
     signerKey = secrets.default.account4;

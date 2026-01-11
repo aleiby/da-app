@@ -1,5 +1,5 @@
 import { getPlayer } from './cardtable';
-
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const Identicon = require('identicon.js');
 
 export const getAvatar = async (
@@ -16,7 +16,7 @@ export const getAvatar = async (
     const hash = Buffer.from(userId, 'base64').toString('hex');
     const data = new Identicon(hash, { size, background }).toString();
     return Buffer.from(data, 'base64');
-  } catch (e) {
+  } catch {
     return null;
   }
 };

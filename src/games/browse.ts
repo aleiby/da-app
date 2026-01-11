@@ -51,7 +51,7 @@ export class Browse extends CardGame {
       // Draw card from deck.
       const deck = dir[name];
       if (deck) {
-        let card = await deck.drawCard(hand);
+        const card = await deck.drawCard(hand);
         if (card != null) {
           revealCard(this.tableId, card);
         }

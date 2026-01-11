@@ -149,7 +149,7 @@ export class Solitaire extends CardGame {
 
       // Put card back.
       if (lastDrawPile != null && lastDrawPile == deck) {
-        let card = await hand.drawCard(lastDrawPile, true);
+        const card = await hand.drawCard(lastDrawPile, true);
         if (card != null) {
           lastDrawPile.flip([card]);
           lastDrawPile = null;

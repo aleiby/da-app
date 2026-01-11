@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/static-components */
 import { useState, useEffect } from 'react';
 import { io } from 'socket.io-client';
 import { allCards } from './tarot';
@@ -71,14 +72,15 @@ function App() {
     unityContext.on('RefundCardPack', async () => {
       unityContext.send(gameManager, 'OnRefundCardPack', (await refundPack()) ? 1 : 0);
     });
-    unityContext.on('OpenCardPack', openPack);
+    unityContext.on('OpenCardPack', async () => {
+      browser.emit('openPack', await getWalletAddress());
+    });
     browser.on('packOpened', (success: boolean) => {
       unityContext.send(gameManager, 'OnOpenCardPack', success ? 1 : 0);
     });
   }, []);
 
   const mintSet = () => browser.emit('mintSet');
-  const openPack = async () => browser.emit('openPack', await getWalletAddress());
   const switchAccount = async () => {
     await connectWallet();
     unityContext.send(gameManager, 'SetWalletAddress', await getWalletAddress());
@@ -121,8 +123,8 @@ function App() {
     <Row>
       <Col>
         <p>Odds:</p>
-        {odds.map((value, _) => (
-          <ProgressBar now={value} label={value} min={850} max={1000} />
+        {odds.map((value, i) => (
+          <ProgressBar key={i} now={value} label={value} min={850} max={1000} />
         ))}
       </Col>
       <Col>
@@ -131,6 +133,7 @@ function App() {
         </p>
         {totals.map((value, i) => (
           <ProgressBar
+            key={i}
             now={value}
             label={`${cards[i]}(${value})`}
             min={mintotals - 50}

@@ -15,8 +15,8 @@ export const getPendingAmount = async (walletAddress: string) => {
     const response = await axios.get(ledgerQuery, config);
     const entry: EscrowEntry = response.data[0];
     return entry.active ? entry.value : 0;
-  } catch (error) {
-    //console.log(error);
+  } catch {
+    // Indexer query failed - treat as no pending amount
   }
   return 0;
 };

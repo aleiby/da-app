@@ -68,7 +68,7 @@ export const newTable = async (userIds: string[]) => {
     `${tableId}:players`,
     userIds.map((userId, index) => ({ score: index, value: userId }))
   );
-  userIds.forEach((userId, index) => {
+  userIds.forEach((userId, _index) => {
     // TODO: Remove userId from prev table's players list
     //       (Cleanup on empty)
 
