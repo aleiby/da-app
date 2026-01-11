@@ -122,6 +122,10 @@ app.get('/name/:userId', async (req: any, res: any) => {
 
 // Serve player avatars.
 app.get('/avatar/:userId', async (req: any, res: any) => {
+  // Allow cross-origin requests from React dev server
+  if (isDevelopment) {
+    res.set('Access-Control-Allow-Origin', 'http://localhost:3000');
+  }
   const png = await getAvatar(req.params.userId);
   res.type('png');
   res.end(png);
