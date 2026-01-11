@@ -36,7 +36,7 @@ class Random(sp.Contract):
         i = sp.local('i', 0)
         result = sp.local('result', 0)
         bytes_len = sp.local('bytes_len', sp.len(bytes))
-        sp.while i.value < bytes_len.value:
+        while i.value < bytes_len.value:
             byte_value = self.data.bytes_to_nat[sp.slice(bytes, i.value, 1).open_some()]
             result.value = result.value * 256 + byte_value
             i.value = i.value + 1
@@ -61,7 +61,7 @@ class Random(sp.Contract):
         # Store a set of random values
         self.data.results = []
         j = sp.local('j', 0)
-        sp.while j.value < 256:
+        while j.value < 256:
             z.value = lower32(36969 * lower16(z.value) + (z.value >> 16))
             w.value = lower32(18000 * lower16(w.value) + (w.value >> 16))
             self.data.results.push(lower32((z.value << 16) + w.value))

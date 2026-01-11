@@ -93,7 +93,7 @@ def test():
 def deploy():
     s = sp.test_scenario()
     s.h1("Deploy")
-    fa2Contract = sp.address("KT1...")  # Set after FA2 deployment
+    fa2Contract = sp.address("KT1LqHTrLGvHx1yR33kiR1BSptmoC6F6FDNX")
     adminAddress = sp.address("tz1ii8yaEJFXMM5czchR9AwkhjG5ysTeuHbD")
     c = Marketplace(fa2Contract, adminAddress)
     s += c

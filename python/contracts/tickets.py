@@ -31,7 +31,7 @@ class Marketplace(Escrow):
         txs_type = sp.TRecord(amount=sp.TNat, to_=sp.TAddress, token_id=sp.TNat).layout(("to_", ("token_id", "amount")))
         c = sp.contract(sp.TList(sp.TRecord(from_=sp.TAddress, txs=sp.TList(txs_type))), fa2, entry_point='transfer').open_some()
         txs = sp.local('txs', sp.list(t=txs_type))
-        sp.for id in ids:
+        for id in ids:
             txs.value.push(sp.record(amount=1, to_=to_, token_id=id))
         sp.transfer(sp.list([sp.record(from_=from_, txs=txs.value)]), sp.mutez(0), c)
 

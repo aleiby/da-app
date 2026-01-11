@@ -35,10 +35,8 @@ const networkConfig = {
   [NetworkType.GHOSTNET]: {
     rpcUrl: 'https://ghostnet.smartpy.io',
     indexerUrl: 'https://api.ghostnet.tzkt.io/v1/contracts/',
-    // TODO: Deploy contracts to Ghostnet and update these addresses
-    // See: scripts/deploy-contracts.ts for deployment instructions
-    fa2Contract: '', // Deploy FA2 contract and update
-    escrowContract: '', // Deploy Escrow/Marketplace contract and update
+    fa2Contract: 'KT1LqHTrLGvHx1yR33kiR1BSptmoC6F6FDNX',
+    escrowContract: 'KT1HpQ4nyGQuWZihE32V4A3Z13uN3wWJHKTi',
   },
   [NetworkType.MAINNET]: {
     rpcUrl: 'https://mainnet.smartpy.io',
