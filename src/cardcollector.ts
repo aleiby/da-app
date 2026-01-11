@@ -20,15 +20,28 @@ type MetadataEntry = {
   token_info: any;
 };
 
-const collectors: any = {};
+const collectors: { [address: string]: CardCollector } = {};
 
-export const collectCards = (walletAddress: string) => {
+export const collectCards = (walletAddress: string): void => {
   if (collectors[walletAddress]) {
     return;
   }
   const collector = new CardCollector(walletAddress);
   collectors[walletAddress] = collector;
   collector.begin();
+};
+
+/**
+ * Refreshes the card collection for a wallet address by clearing the cache
+ * and re-running the collection from the blockchain. This should be called
+ * after events that change ownership (e.g., pack purchases).
+ * Returns a promise that resolves when the collection is complete.
+ */
+export const refreshCards = async (walletAddress: string): Promise<void> => {
+  delete collectors[walletAddress];
+  const collector = new CardCollector(walletAddress);
+  collectors[walletAddress] = collector;
+  await collector.begin();
 };
 
 class CardCollector {
@@ -51,7 +64,7 @@ class CardCollector {
     if (active.length > 0) {
       // store off amounts for easier lookup below
       const amounts = new Map<number, number>();
-      for (let entry of active) {
+      for (const entry of active) {
         amounts.set(parseInt(entry.key.nat), parseInt(entry.value));
       }
 
@@ -64,7 +77,7 @@ class CardCollector {
 
       // register unique instances for number owned
       const promises = [];
-      for (let entry of data) {
+      for (const entry of data) {
         const token_id = parseInt(entry.token_id);
         const ipfsUri = bytesToString(entry.token_info['']);
         const amount = amounts.get(token_id);
