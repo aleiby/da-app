@@ -62,9 +62,13 @@ test.describe('War Game', () => {
       messages.push(msg);
       lastActivityTime = Date.now();
 
-      // Check for exit condition
+      // Check for exit conditions
       if (msg.toLowerCase().includes('bye')) {
         console.log('Received "Bye" - will exit');
+        shouldExit = true;
+      }
+      if (msg.includes('has left the table')) {
+        console.log('Other player left - will exit');
         shouldExit = true;
       }
     });
@@ -146,32 +150,37 @@ test.describe('War Game', () => {
     socket.emit('userName', CLAUDE_NAME);
     await new Promise((r) => setTimeout(r, 1000));
 
-    // Check if we're already in a valid War game with another player
+    // Always quit any existing game and rejoin fresh
+    // (reconnection state is often stale and unreliable)
     console.log(`Current state: inWarGame=${inWarGame}, playerCount=${playerCount}`);
 
-    if (inWarGame && playerCount === 2) {
-      console.log('Already in a 2-player War game, ready to play!');
-    } else {
-      // Need to quit and rejoin
-      if (inWarGame || playerCount > 0) {
-        console.log('Quitting broken/solo game...');
-        socket.emit('quitGame', 'War');
-        await new Promise((r) => setTimeout(r, 1000));
-      }
-
-      // Join War matchmaking
-      console.log('Joining War matchmaking...');
-      socket.emit('playGame', 'War');
-
-      // Wait for matchmaking
-      console.log('Waiting for match...');
-      await new Promise((r) => setTimeout(r, 5000));
+    if (inWarGame || playerCount > 0) {
+      console.log('Quitting existing game to start fresh...');
+      socket.emit('quitGame', 'War');
+      await new Promise((r) => setTimeout(r, 1000));
+      // Reset state after quitting
+      inWarGame = false;
+      playerCount = 0;
+      mySeat = '';
+      myDeckName = '';
     }
+
+    // Join War matchmaking
+    console.log('Joining War matchmaking...');
+    socket.emit('playGame', 'War');
+
+    // Wait for matchmaking
+    console.log('Waiting for match...');
+    await new Promise((r) => setTimeout(r, 3000));
 
     // Game loop - click deck every second
     const TIMEOUT_MS = 60000; // 1 minute timeout
     const POLL_INTERVAL_MS = 1000;
     let roundCount = 0;
+
+    // Reset exit flag - historical messages from reconnection may have set it
+    shouldExit = false;
+    lastActivityTime = Date.now();
 
     console.log('Entering game loop...');
     console.log('Waiting for 2 players in War game...');
