@@ -49,6 +49,9 @@ export const io = new Server(server, {
 });
 const port = process.env.PORT || 8080;
 
+// Export server for test cleanup
+export { server };
+
 const defaultSet = "Default (beta)";
 const defaultMinting = "First Edition";
 const defaultPriceMutez = 1000000;
@@ -122,6 +125,28 @@ app.get('/avatar/:userId', async (req: any, res: any) => {
     res.end(png);
 });
 
-server.listen(port, () => {
-    console.log(`server listening on port: ${port}`)
-});
+// Use global to track server startup across module re-evaluations in tests
+// This prevents EADDRINUSE errors when vitest re-imports the module
+declare global {
+    // eslint-disable-next-line no-var
+    var __daServerStarted: boolean | undefined;
+}
+
+if (!globalThis.__daServerStarted) {
+    globalThis.__daServerStarted = true;
+    server.listen(port, () => {
+        console.log(`server listening on port: ${port}`)
+    });
+}
+
+/**
+ * Gracefully shutdown the server and Redis connection.
+ * Used by tests to clean up after test runs.
+ */
+export async function shutdown(): Promise<void> {
+    return new Promise((resolve) => {
+        server.close(() => {
+            redis.disconnect().then(() => resolve());
+        });
+    });
+}

@@ -6,13 +6,15 @@
  * These warnings are benign and don't affect test functionality.
  */
 
+type WriteCallback = (err?: Error | null) => void;
+
 export default function globalSetup() {
   const originalStderrWrite = process.stderr.write.bind(process.stderr);
 
   process.stderr.write = (
     chunk: string | Uint8Array,
-    encodingOrCallback?: BufferEncoding | ((err?: Error) => void),
-    callback?: (err?: Error) => void
+    encodingOrCallback?: BufferEncoding | WriteCallback,
+    callback?: WriteCallback
   ): boolean => {
     const str = typeof chunk === 'string' ? chunk : new TextDecoder().decode(chunk);
 
