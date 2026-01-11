@@ -88,14 +88,26 @@ test.describe('War Game', () => {
     });
 
     // Track table assignment
+    let wasInGame = false;
     socket.on('setTable', (tableId: string, seat: string, count: number) => {
       console.log(`[TABLE] Joined ${tableId} as seat ${seat} (${count} players)`);
       lastActivityTime = Date.now();
+
+      // Detect if other player left (was 2 players, now 1)
+      if (wasInGame && playerCount === 2 && count < 2) {
+        console.log('Other player left - will exit');
+        shouldExit = true;
+      }
+
       mySeat = seat;
       playerCount = count;
       // In War, seat A uses DeckA, seat B uses DeckB
       myDeckName = `Deck${seat}`;
       console.log(`My seat: ${seat}, my deck: ${myDeckName}`);
+
+      if (count === 2) {
+        wasInGame = true;
+      }
     });
 
     // Track game resume (tells us which game we're in)
@@ -184,6 +196,11 @@ test.describe('War Game', () => {
       // Wait before next action
       await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
     }
+
+    // Say goodbye before leaving
+    console.log('Sending Bye...');
+    socket.emit('chat', 'Bye');
+    await new Promise((r) => setTimeout(r, 500));
 
     // Clean up
     console.log('Disconnecting...');
