@@ -1,10 +1,9 @@
 import fs from 'fs';
 import path from 'path';
 import { Socket } from 'socket.io';
-import { getDirectory } from './utils';
 import { randrange, sfc32, xmur3 } from './random';
 import { allCards, totalCards } from './tarot';
-import { NFTStorage } from 'nft.storage';
+import pinataSDK from '@pinata/sdk';
 import { MongoClient } from 'mongodb';
 import { TezosToolkit, MichelsonMap } from '@taquito/taquito';
 import { InMemorySigner } from '@taquito/signer';
@@ -42,7 +41,7 @@ type CardPack = {
   tokenIds: number[];
 };
 
-let setCID = 'bafybeiefg5nl5ioy37lrzizqxmb4woadptwjjegtarv2nfqohxzitsd4be';
+let setCID = 'QmeScomoEMKuREocwRN8RwNvnycfMbqkWBSx2MLaXa5ZGp';
 
 export const mintSet = async (socket: Socket, set: string, minting: string) => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -57,9 +56,7 @@ export const mintSet = async (socket: Socket, set: string, minting: string) => {
 
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const storageKeys = require('../private/storageKeys');
-    const storage = new NFTStorage({
-      token: storageKeys.default.apiKey,
-    });
+    const pinata = pinataSDK({ pinataJWTKey: storageKeys.default.pinataJwt });
 
     // Upload card textures if needed.
     if (setCID === '') {
@@ -73,11 +70,11 @@ export const mintSet = async (socket: Socket, set: string, minting: string) => {
         }
       }
 
-      // Pin to IPFS.
-      const directory = await getDirectory(socket, setpath);
-      setCID = await storage.storeDirectory(directory);
+      // Pin to IPFS via Pinata.
+      socket.emit('pct', 50, 'Uploading to IPFS...');
+      const result = await pinata.pinFromFS(setpath);
+      setCID = result.IpfsHash;
       console.log({ setCID });
-      console.log(await storage.status(setCID));
     }
 
     // Init RNG.
@@ -158,13 +155,12 @@ export const mintSet = async (socket: Socket, set: string, minting: string) => {
       }
     }
 
-    // Upload json (dir per lot) to IPFS, record CIDs.
+    // Upload json (dir per lot) to IPFS via Pinata, record CIDs.
     for (const lot of lots) {
       const lotpath = path.join(setpath, lot.name);
-      const directory = await getDirectory(socket, lotpath);
-      lot.CID = await storage.storeDirectory(directory);
+      const result = await pinata.pinFromFS(lotpath);
+      lot.CID = result.IpfsHash;
       console.log(`${lot.name}: ${lot.CID}`);
-      console.log(await storage.status(lot.CID));
     }
 
     // TODO: Pass in per set / minting.

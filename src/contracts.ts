@@ -35,8 +35,8 @@ const networkConfig = {
   [NetworkType.GHOSTNET]: {
     rpcUrl: 'https://ghostnet.smartpy.io',
     indexerUrl: 'https://api.ghostnet.tzkt.io/v1/contracts/',
-    fa2Contract: 'KT1LqHTrLGvHx1yR33kiR1BSptmoC6F6FDNX',
-    escrowContract: 'KT1HpQ4nyGQuWZihE32V4A3Z13uN3wWJHKTi',
+    fa2Contract: 'KT1P23Bi5LVorMVKBHLC98xcBbgYY9WWPsmS',
+    escrowContract: 'KT1Fv752oEapxohrM9fCaRd9ZSf99PqajHM4',
   },
   [NetworkType.MAINNET]: {
     rpcUrl: 'https://mainnet.smartpy.io',

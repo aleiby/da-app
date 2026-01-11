@@ -5,13 +5,14 @@
 
 
 import os
+import sys
 
 from PIL import Image               # to load images
-from IPython.display import display # to display images
 
-root = "C:\\dev\\da\\decks"
-path = os.path.join(root,"nftarotcompiledwback.png")
-deck = os.path.join(root,"default")
+# Allow path overrides via command line or use defaults
+root = sys.argv[1] if len(sys.argv) > 1 else "/home/aleiby/projects"
+path = os.path.join(root, "nftarotcompiledwback.png")
+deck = sys.argv[2] if len(sys.argv) > 2 else "/home/aleiby/projects/da-app/sets/Default (beta)"
 display_scale = 4;
 
 suits = ["pentacles","swords","wands","cups"]
@@ -25,7 +26,7 @@ cards_in_suit = len(names)
 num_suits = len(suits)
 
 image = Image.open(path)
-display(image)
+print(f"Loaded image: {path} ({image.width}x{image.height})")
 
 card_size = ((image.width/cards_in_suit), image.height/(num_suits+2))
 print(card_size)
@@ -43,7 +44,6 @@ if not os.path.exists(deck):
 def export(name,x,y):
     box = (x,y,x+card_size[0],y+card_size[1])
     card = image.crop(box)
-    display(card)
     print(name)
     path = os.path.join(deck, name + ".png")
     card.save(path)
@@ -52,7 +52,6 @@ def export(name,x,y):
     path = os.path.join(deck, name + "-display.png")
     card = card.resize(display_size, Image.NEAREST)
     card.save(path)
-    display(card)
 
 num_major_arcana = len(major_arcana)
 back = export("back", (num_major_arcana%cards_in_suit) * card_size[0], (num_suits + 1) * card_size[1])

@@ -375,9 +375,9 @@ class FA2_core(sp.Contract):
     def transfer(self, params):
         sp.verify( ~self.is_paused(), message = self.error_message.paused() )
         sp.set_type(params, self.batch_transfer.get_type())
-        for transfer in params:
+        sp.for transfer in params:
            current_from = transfer.from_
-           for tx in transfer.txs:
+           sp.for tx in transfer.txs:
                 if self.config.single_asset:
                     sp.verify(tx.token_id == 0, message = "single-asset: token-id <> 0")
 
@@ -398,7 +398,7 @@ class FA2_core(sp.Contract):
                     message = self.error_message.token_undefined()
                 )
                 # If amount is 0 we do nothing now:
-                if tx.amount > 0:
+                sp.if (tx.amount > 0):
                     from_user = self.ledger_key.make(current_from, tx.token_id)
                     sp.verify(
                         (self.data.ledger[from_user].balance >= tx.amount),
@@ -406,11 +406,11 @@ class FA2_core(sp.Contract):
                     to_user = self.ledger_key.make(tx.to_, tx.token_id)
                     self.data.ledger[from_user].balance = sp.as_nat(
                         self.data.ledger[from_user].balance - tx.amount)
-                    if self.data.ledger.contains(to_user):
+                    sp.if self.data.ledger.contains(to_user):
                         self.data.ledger[to_user].balance += tx.amount
-                    else:
+                    sp.else:
                          self.data.ledger[to_user] = Ledger_value.make(tx.amount)
-                else:
+                sp.else:
                     pass
 
     @sp.entry_point
@@ -421,7 +421,7 @@ class FA2_core(sp.Contract):
         def f_process_request(req):
             user = self.ledger_key.make(req.owner, req.token_id)
             sp.verify(self.data.token_metadata.contains(req.token_id), message = self.error_message.token_undefined())
-            if self.data.ledger.contains(user):
+            sp.if self.data.ledger.contains(user):
                 balance = self.data.ledger[user].balance
                 sp.result(
                     sp.record(
@@ -429,7 +429,7 @@ class FA2_core(sp.Contract):
                             owner = sp.set_type_expr(req.owner, sp.TAddress),
                             token_id = sp.set_type_expr(req.token_id, sp.TNat)),
                         balance = balance))
-            else:
+            sp.else:
                 sp.result(
                     sp.record(
                         request = sp.record(
@@ -462,7 +462,7 @@ class FA2_core(sp.Contract):
             )
         ))
         if self.config.support_operator:
-            for update in params:
+            sp.for update in params:
                 with update.match_cases() as arg:
                     with arg.match("add_operator") as upd:
                         sp.verify(
@@ -531,11 +531,11 @@ class FA2_mint(FA2_core):
                 message = "NFT-asset: cannot mint twice same token"
             )
         user = self.ledger_key.make(params.address, params.token_id)
-        if self.data.ledger.contains(user):
+        sp.if self.data.ledger.contains(user):
             self.data.ledger[user].balance += params.amount
-        else:
+        sp.else:
             self.data.ledger[user] = Ledger_value.make(params.amount)
-        if ~ self.token_id_set.contains(self.data.all_tokens, params.token_id):
+        sp.if ~ self.token_id_set.contains(self.data.all_tokens, params.token_id):
             self.token_id_set.add(self.data.all_tokens, params.token_id)
             self.data.token_metadata[params.token_id] = sp.record(
                 token_id    = params.token_id,
@@ -698,7 +698,7 @@ class View_consumer(sp.Contract):
     def receive_balances(self, params):
         sp.set_type(params, Balance_of.response_type())
         self.data.last_sum = 0
-        for resp in params:
+        sp.for resp in params:
             self.data.last_sum += resp.balance
 
 ## ### Generation of Test Scenarios
