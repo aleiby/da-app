@@ -161,6 +161,9 @@ bd dep add <new-issue-id> da-app-ke2
 ```
 This keeps future work out of `bd ready` until explicitly approved.
 
+### No TODOs in Code
+Use bd issues instead of TODO/FIXME comments in code. Inline comments get lost; bd issues are tracked, searchable, and have dependencies. Brief contextual comments are fine (e.g., `// Set after deployment`), but actionable work items belong in bd.
+
 ### Landing the Plane (Session Completion)
 
 When ending a work session, you MUST complete ALL steps below. Work is NOT complete until `git push` succeeds.
