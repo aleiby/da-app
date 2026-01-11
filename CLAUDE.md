@@ -80,6 +80,23 @@ export $(grep -v '^#' .env.test | xargs) && npx playwright test e2e/wallet-conne
 2. Fund via faucet: https://faucet.ghostnet.teztnets.com/
 3. Update `.env.test` with new address and key
 
+### Multiplayer Game Testing
+
+The `e2e/war-game.spec.ts` test connects via Socket.io to play War against a human player.
+
+**To play War with Claude:**
+1. Start server: `npm run server-dev`
+2. Start client: `npm run start-client`
+3. In your browser, click the soldier icon to queue for War
+4. Run: `npx playwright test e2e/war-game.spec.ts --reporter=list`
+
+**Exit conditions:**
+- Either player says "Bye" in chat
+- Other player leaves (player count drops)
+- 60 seconds of inactivity
+
+**Note:** This test uses Socket.io directly, bypassing the Unity canvas. Claude plays as a second player with wallet `tz1ClaudeTestWallet00000000000000000`.
+
 ### Development
 - `npm run start` - Start production server (`ts-node ./src/server.ts`)
 - `npm run start-client` - Start React development server (port 3000)
