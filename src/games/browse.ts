@@ -90,7 +90,9 @@ export class Browse extends CardGame
         assert(deck);
 
         if (initialSetup) {
-            deck.add(await getShuffledDeck(player));
+            const cards = await getShuffledDeck(player);
+            cards.sort((a, b) => (b.token_id >= 0 ? 1 : 0) - (a.token_id >= 0 ? 1 : 0)); // owned first
+            deck.add(cards);
         }
 
         console.log("GO");
