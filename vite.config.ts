@@ -1,8 +1,17 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { nodePolyfills } from 'vite-plugin-node-polyfills';
+import path from 'path';
 
 export default defineConfig({
+  resolve: {
+    alias:
+      process.env.E2E_MOCK_WALLET === 'true'
+        ? {
+            '@taquito/beacon-wallet': path.resolve(__dirname, 'e2e/mocks/beacon-wallet-mock.ts'),
+          }
+        : {},
+  },
   plugins: [
     react(),
     nodePolyfills({
