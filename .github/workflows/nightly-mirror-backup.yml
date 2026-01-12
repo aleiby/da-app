@@ -3,7 +3,7 @@ name: Nightly mirror backup
 on:
   workflow_dispatch: {}
   schedule:
-    # GitHub cron is UTC. Run twice to cover DST.
+    # GitHub cron is UTC. Run twice to cover DST, then gate to 04:00 Pacific.
     - cron: '0 11 * * *'
     - cron: '0 12 * * *'
 
@@ -56,15 +56,14 @@ jobs:
           TARGET_REPO: aleiby/da-app-backup
         run: |
           set -euo pipefail
-          url="https://api.github.com/repos/${TARGET_REPO}"
           code="$(curl -s -o /dev/null -w "%{http_code}" \
             -H "Authorization: Bearer ${MIRROR_TOKEN}" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
-            "${url}")"
+            "https://api.github.com/repos/${TARGET_REPO}")"
           echo "GitHub API status for ${TARGET_REPO}: ${code}"
           test "${code}" = "200"
-          
-      - name: Mirror-push to backup repo
+
+      - name: True mirror-push to backup repo
         if: steps.gate.outputs.run_mirror == 'true'
         shell: bash
         env:
@@ -72,6 +71,14 @@ jobs:
           TARGET_REPO: aleiby/da-app-backup
         run: |
           set -euo pipefail
+
+          # Requires the fine-grained PAT to have:
+          # - Contents: read/write
+          # - Workflows: read/write
           git remote add backup "https://aleiby:${MIRROR_TOKEN}@github.com/${TARGET_REPO}.git"
+
+          # Quick auth check
           git ls-remote backup >/dev/null
+
+          # Mirror all refs (branches, tags, remote-tracking refs)
           git push --mirror backup
