@@ -60,5 +60,7 @@ jobs:
           TARGET_REPO: aleiby/da-app-backup
         run: |
           set -euo pipefail
-          git remote add backup "https://x-access-token:${MIRROR_TOKEN}@github.com/${TARGET_REPO}.git"
+          git remote add backup "https://aleiby:${MIRROR_TOKEN}@github.com/${TARGET_REPO}.git"
+          # Quick auth check (gives the same failure mode as push, but faster)
+          git ls-remote backup >/dev/null
           git push --mirror backup
