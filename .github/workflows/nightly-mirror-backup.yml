@@ -3,6 +3,7 @@ name: Nightly mirror backup
 on:
   workflow_dispatch: {}
   schedule:
+    # GitHub cron is UTC. Run twice to cover DST.
     - cron: '0 11 * * *'
     - cron: '0 12 * * *'
 
@@ -19,11 +20,13 @@ jobs:
         run: |
           set -euo pipefail
 
+          # Manual runs always execute
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             echo "run_mirror=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
+          # Scheduled runs only execute at 04:00 Pacific
           if [ "$(TZ=America/Los_Angeles date +%H)" = "04" ]; then
             echo "run_mirror=true" >> "$GITHUB_OUTPUT"
           else
@@ -31,13 +34,21 @@ jobs:
             echo "Not 4am Pacific right now; skipping mirror."
           fi
 
-      - name: Checkout full history
+      - name: Checkout full history (all branches and tags)
         if: steps.gate.outputs.run_mirror == 'true'
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          persist-credentials: false
 
-      - name: Preflight - token can access backup repo
+      - name: Clear GitHub auth header so PAT is used
+        if: steps.gate.outputs.run_mirror == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config --global --unset-all http.https://github.com/.extraheader || true
+
+      - name: "Preflight: verify token can access backup repo"
         if: steps.gate.outputs.run_mirror == 'true'
         shell: bash
         env:
@@ -45,13 +56,14 @@ jobs:
           TARGET_REPO: aleiby/da-app-backup
         run: |
           set -euo pipefail
+          url="https://api.github.com/repos/${TARGET_REPO}"
           code="$(curl -s -o /dev/null -w "%{http_code}" \
             -H "Authorization: Bearer ${MIRROR_TOKEN}" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
-            "https://api.github.com/repos/${TARGET_REPO}")"
+            "${url}")"
           echo "GitHub API status for ${TARGET_REPO}: ${code}"
           test "${code}" = "200"
-
+          
       - name: Mirror-push to backup repo
         if: steps.gate.outputs.run_mirror == 'true'
         shell: bash
@@ -61,6 +73,5 @@ jobs:
         run: |
           set -euo pipefail
           git remote add backup "https://aleiby:${MIRROR_TOKEN}@github.com/${TARGET_REPO}.git"
-          # Quick auth check (gives the same failure mode as push, but faster)
           git ls-remote backup >/dev/null
           git push --mirror backup
