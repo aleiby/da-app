@@ -32,6 +32,10 @@ When making technical decisions, consider:
 2. **Simplicity** - Avoid over-engineering; this is a community project, not enterprise software
 3. **Independence** - Prefer solutions that don't create vendor lock-in or require ongoing business relationships
 
+### Design Principles
+1. **Verify with metrics, not narratives** - When checking test results, verify quantitative metrics (counts, exit codes, timing) first. Message logs may be historical, cached, or misleading. "Rounds played: 0" matters more than chat messages showing gameplay.
+2. **Symmetric events** - If there's a notification for entering a state, there should be one for leaving it. "Player joined" needs "Player left". This applies to game events, UI feedback, and state transitions.
+
 ## Commands
 
 ### Build & Test
