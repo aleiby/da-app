@@ -98,7 +98,7 @@ function App() {
     </Row>
   );
 
-  const SimpleButton = (props: any) => (
+  const SimpleButton = (props: { onClick: () => void; label: string }) => (
     <Col>
       <Button onClick={props.onClick}>{props.label}</Button>
     </Col>

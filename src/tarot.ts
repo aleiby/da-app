@@ -47,13 +47,13 @@ export const majorArcana = [
 ];
 
 export function allCards() {
-  let results = [];
-  for (let suit of minorSuits) {
-    for (let card of minorCards) {
+  const results = [];
+  for (const suit of minorSuits) {
+    for (const card of minorCards) {
       results.push(minorArcana(card, suit));
     }
   }
-  for (let card of majorArcana) {
+  for (const card of majorArcana) {
     results.push(card);
   }
   return results;
