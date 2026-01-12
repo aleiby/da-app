@@ -126,7 +126,7 @@ The Express server hosts both the Socket.io server and React build in production
 1. `/browser` - Browser client communication (pack purchases, minting)
 2. Default namespace - Unity client connections for gameplay
 
-Redis client is initialized at server startup and shared across modules via export. Environment-based configuration uses `QOVERY_REDIS_*` environment variables (legacy; new hosting TBD - see issue da-app-8tm).
+Redis client is initialized at server startup and shared across modules via export. Environment-based configuration uses `QOVERY_REDIS_*` environment variables (legacy; new hosting TBD).
 
 #### Connection Management (src/connection.ts)
 Each Socket.io connection creates a `Connection` instance that:
@@ -218,12 +218,14 @@ SmartPy tests for contract verification:
 ## Project-Specific bd Practices
 
 ### Future Work Gate
-When creating issues for future/deferred work (not immediate priorities), add a dependency on the **Future Work Gate** (`da-app-ke2`):
+When creating issues for future/deferred work (not immediate priorities), you can gate them behind a "Future Work Gate" issue to keep them out of `bd ready`:
 ```bash
+bd create --title="Future Work Gate" --type=epic --priority=3
+# Note the issue ID (e.g., da-xxx)
 bd create --title="..." --type=feature --priority=3
-bd dep add <new-issue-id> da-app-ke2
+bd dep add <new-issue-id> <future-gate-id>
 ```
-This keeps future work out of `bd ready` until explicitly approved.
+This pattern keeps future work organized and prevents it from appearing in `bd ready` until the gate is explicitly removed or resolved.
 
 ### Labels for Grouping Related Issues
 Use labels to group related issues (e.g., `unity` for Unity-related work, `marketplace` for purchase flow issues). Labels help with filtering and discovery:
