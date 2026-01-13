@@ -228,50 +228,47 @@ This project uses **bd** for issue tracking. Run `bd onboard` to get started.
 - `bd close <id>` - Complete work
 - `bd sync` - Sync with git
 
-### Future Work Gate
-When creating issues for future/deferred work (not immediate priorities), add a dependency on the **Future Work Gate** (`da-app-ke2`):
+### Best Practices
+
+**See global guide**: `~/.config/claude/session-best-practices.md` for:
+- Landing the Plane (session completion workflow)
+- No TODOs in Code policy
+- Labels for grouping issues
+- Future Work Gate pattern
+- Code quality principles
+
+### Project-Specific: Future Work Gate
+
+This project uses `da-app-ke2` as the Future Work Gate issue. When creating future/deferred work:
+
 ```bash
 bd create --title="..." --type=feature --priority=3
 bd dep add <new-issue-id> da-app-ke2
 ```
-This keeps future work out of `bd ready` until explicitly approved.
 
-### Labels for Grouping Related Issues
-Use labels to group related issues (e.g., `unity` for Unity-related work, `marketplace` for purchase flow issues). Labels help with filtering and discovery:
+### Common Labels in This Project
+
+- `unity` - Unity client related work
+- `marketplace` - Pack purchase and NFT minting
+- `contracts` - SmartPy contract development
+- `game-rules` - Card game logic (War, Solitaire, etc.)
+- `redis` - Redis/caching related work
+- `testing` - Test infrastructure and E2E tests
+
+### Session Completion
+
+**See full workflow**: `~/.config/claude/session-best-practices.md#landing-the-plane-session-completion`
+
+**Quick reference:**
 ```bash
-bd label add <issue-id> <label>      # Add label
-bd list --label=<label>              # Find issues with label
-bd label list-all                    # See all labels in use
+# Run quality gates for this project
+npm test                    # Vitest tests
+npm run test:contracts      # SmartPy contract tests (if changed)
+npm run build              # React production build
+
+# Push everything
+git pull --rebase && bd sync && git push
+git status  # Must show "up to date with origin"
 ```
 
-If closing an issue should trigger review of related issues, document that in the issue's description as an "On close" instruction.
-
-### No TODOs in Code
-Use bd issues instead of TODO/FIXME comments in code. Inline comments get lost; bd issues are tracked, searchable, and have dependencies. Brief contextual comments are fine (e.g., `// Set after deployment`), but actionable work items belong in bd.
-
-### Landing the Plane (Session Completion)
-
-When ending a work session, you MUST complete ALL steps below. Work is NOT complete until `git push` succeeds.
-
-**MANDATORY WORKFLOW:**
-
-1. **File issues for remaining work** - Create issues for anything that needs follow-up
-2. **Run quality gates** (if code changed) - Tests, linters, builds
-3. **Update issue status** - Close finished work, update in-progress items
-4. **PUSH TO REMOTE** - This is MANDATORY:
-   ```bash
-   git pull --rebase
-   bd sync
-   git push
-   git status  # MUST show "up to date with origin"
-   ```
-5. **Clean up** - Clear stashes, prune remote branches
-6. **Verify** - All changes committed AND pushed
-7. **Hand off** - Provide context for next session
-8. **Learn from session** - Run `autoskill` to analyze corrections and preferences, propose skill updates
-
-**CRITICAL RULES:**
-- Work is NOT complete until `git push` succeeds
-- NEVER stop before pushing - that leaves work stranded locally
-- NEVER say "ready to push when you are" - YOU must push
-- If push fails, resolve and retry until it succeeds
+**Critical**: Work is NOT complete until `git push` succeeds.
