@@ -27,7 +27,7 @@ test.setTimeout(120000);
 test.describe('War Game', () => {
   test('play War against another player via Socket.io', async () => {
     // Connect to the game server
-    const serverUrl = process.env.SERVER_URL || 'http://localhost:8080';
+    const serverUrl = process.env.SERVER_URL || 'http://localhost:3001';
     console.log(`Connecting to ${serverUrl}...`);
 
     const socket: Socket = io(serverUrl, {

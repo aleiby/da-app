@@ -8,7 +8,7 @@ import { io as ioClient, Socket } from 'socket.io-client';
 import { createClient } from 'redis';
 import type { RedisClientType } from '../server';
 
-export const SERVER_URL = 'http://localhost:8080';
+export const SERVER_URL = 'http://localhost:3001';
 export const DEFAULT_TIMEOUT = 5000;
 
 /**

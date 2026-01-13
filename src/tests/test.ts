@@ -6,7 +6,7 @@
  * When server.ts loads, it immediately:
  *   1. Connects to Redis
  *   2. Creates Express app and Socket.io server
- *   3. Starts listening on port 8080
+ *   3. Starts listening on port 3001
  *
  * This means the server is running for all tests in this file, which is
  * required for the server integration tests at the bottom of this file.
@@ -134,7 +134,7 @@ test('players', async () => {
 
 import { io as ioClient, Socket } from 'socket.io-client';
 
-const SERVER_URL = 'http://localhost:8080';
+const SERVER_URL = 'http://localhost:3001';
 
 // Helper to wait for server to be ready
 async function waitForServer(maxAttempts = 30): Promise<boolean> {

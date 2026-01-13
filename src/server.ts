@@ -47,7 +47,7 @@ export const io = new Server(server, {
     origin: ['http://localhost:3000'],
   },
 });
-const port = process.env.PORT || 8080;
+const port = process.env.PORT || 3001;
 
 // Export server for test cleanup
 export { server };
