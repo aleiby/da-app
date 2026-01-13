@@ -239,3 +239,19 @@ If closing an issue should trigger review of related issues, document that in th
 
 ### No TODOs in Code
 Use bd issues instead of TODO/FIXME comments in code. Inline comments get lost; bd issues are tracked, searchable, and have dependencies. Brief contextual comments are fine (e.g., `// Set after deployment`), but actionable work items belong in bd.
+
+### Avoid Interactive Commands
+**CRITICAL for autonomous agents**: Never use `bd edit` - it opens an interactive editor (vim/nano) that blocks execution. Always use `bd update` for field modifications:
+
+```bash
+# ✓ CORRECT - Inline field updates
+bd update <id> --title "New title"
+bd update <id> --status in_progress
+bd update <id> --priority 0
+
+# ✗ WRONG - Opens interactive editor
+bd edit <id> --title
+bd edit <id> --description
+```
+
+`bd update` supports all common fields inline: `--title`, `--description`, `--status`, `--priority`, `--assignee`, `--notes`, `--design`, `--acceptance`.
