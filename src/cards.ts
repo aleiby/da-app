@@ -275,7 +275,11 @@ export enum DeckContents {
   MajorOnly,
 }
 
-export const getShuffledDeck = async (walletAddress: string, contents = DeckContents.AllCards) => {
+export const getShuffledDeck = async (
+  walletAddress: string,
+  contents = DeckContents.AllCards,
+  limit?: number
+) => {
   let values: number[];
   switch (contents) {
     case DeckContents.AllCards:
@@ -293,6 +297,10 @@ export const getShuffledDeck = async (walletAddress: string, contents = DeckCont
   }
 
   shuffle(values);
+
+  if (limit !== undefined && limit > 0) {
+    values = values.slice(0, limit);
+  }
 
   return await Promise.all(
     values.map(async (value) => {
