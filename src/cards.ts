@@ -283,13 +283,13 @@ export const getShuffledDeck = async (
   let values: number[];
   switch (contents) {
     case DeckContents.AllCards:
-      values = valuesAll;
+      values = [...valuesAll];
       break;
     case DeckContents.MinorOnly:
-      values = valuesMinor;
+      values = [...valuesMinor];
       break;
     case DeckContents.MajorOnly:
-      values = valuesMajor;
+      values = [...valuesMajor];
       break;
     default:
       values = [];
@@ -298,8 +298,11 @@ export const getShuffledDeck = async (
 
   shuffle(values);
 
-  if (limit !== undefined && limit > 0) {
-    values = values.slice(0, limit);
+  // Apply limit from parameter or TEST_DECK_SIZE env var
+  const effectiveLimit =
+    limit ?? (process.env.TEST_DECK_SIZE ? parseInt(process.env.TEST_DECK_SIZE, 10) : undefined);
+  if (effectiveLimit !== undefined && effectiveLimit > 0) {
+    values = values.slice(0, effectiveLimit);
   }
 
   return await Promise.all(
