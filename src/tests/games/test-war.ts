@@ -7,7 +7,7 @@
  * - Game mechanics
  * - Game completion with small decks
  */
-import { test, expect, beforeEach, afterEach, describe, vi } from 'vitest';
+import { test, expect, beforeEach, afterEach, describe } from 'vitest';
 import { createClient } from 'redis';
 import {
   TestClient,
@@ -17,9 +17,6 @@ import {
   disconnectAll,
   waitForServer,
 } from '../socket-helpers';
-
-// Import cards module for mocking
-import * as cardsModule from '../../cards';
 
 // Redis client for test setup/cleanup
 let redis: Awaited<ReturnType<typeof createClient>>;
@@ -108,106 +105,102 @@ describe('War: Chat Commands', () => {
 // ============================================================
 
 describe('War: Game Completion', () => {
-  // SKIP: vi.spyOn doesn't work with ESM imports - war.ts imports getShuffledDeck at module load time
-  // TODO: Use TEST_DECK_SIZE env var once da-w24.4 merges (proper fix)
-  test.skip('game completes with small deck (2 cards each)', async () => {
-    // Mock getShuffledDeck to use limit parameter for small deck
-    const originalGetShuffledDeck = cardsModule.getShuffledDeck;
-    const getShuffledDeckSpy = vi
-      .spyOn(cardsModule, 'getShuffledDeck')
-      .mockImplementation(async (walletAddress, contents = cardsModule.DeckContents.AllCards) => {
-        // Use limit=2 for fast game completion
-        return originalGetShuffledDeck(walletAddress, contents, 2);
-      });
+  let originalDeckSize: string | undefined;
 
-    try {
-      const [clientA, clientB] = createTestClients(2);
-      testClients.push(clientA, clientB);
+  beforeEach(() => {
+    originalDeckSize = process.env.TEST_DECK_SIZE;
+    process.env.TEST_DECK_SIZE = '2'; // Small deck for fast completion
+  });
 
-      await connectAll([clientA, clientB]);
+  afterEach(() => {
+    if (originalDeckSize !== undefined) {
+      process.env.TEST_DECK_SIZE = originalDeckSize;
+    } else {
+      delete process.env.TEST_DECK_SIZE;
+    }
+  });
 
-      // Set up player A
-      clientA.setWallet();
-      await clientA.waitForSetTable();
-      await clientA.waitForResumeGame();
-      clientA.clearReceivedEvents();
-      clientA.playGame('War');
+  test.sequential('game completes with small deck (2 cards each)', async () => {
+    const [clientA, clientB] = createTestClients(2);
+    testClients.push(clientA, clientB);
 
-      // Set up player B
-      clientB.setWallet();
-      await clientB.waitForSetTable();
-      await clientB.waitForResumeGame();
-      clientB.clearReceivedEvents();
-      clientB.playGame('War');
+    await connectAll([clientA, clientB]);
 
-      // Wait for both to be on the same War table
-      const [tableA, tableB] = await Promise.all([
-        clientA.waitForSetTable(),
-        clientB.waitForSetTable(),
-      ]);
-      expect(tableA.tableId).toBe(tableB.tableId);
-      expect(tableA.playerCount).toBe(2);
+    // Set up player A
+    clientA.setWallet();
+    await clientA.waitForSetTable();
+    await clientA.waitForResumeGame();
+    clientA.clearReceivedEvents();
+    clientA.playGame('War');
 
-      // Wait for War game to start
-      const [gameA, gameB] = await Promise.all([
-        clientA.waitForResumeGame(),
-        clientB.waitForResumeGame(),
-      ]);
-      expect(gameA).toBe('War');
-      expect(gameB).toBe('War');
+    // Set up player B
+    clientB.setWallet();
+    await clientB.waitForSetTable();
+    await clientB.waitForResumeGame();
+    clientB.clearReceivedEvents();
+    clientB.playGame('War');
 
-      // Verify mock was called (2 players = 2 calls)
-      expect(getShuffledDeckSpy).toHaveBeenCalledTimes(2);
+    // Wait for both to be on the same War table
+    const [tableA, tableB] = await Promise.all([
+      clientA.waitForSetTable(),
+      clientB.waitForSetTable(),
+    ]);
+    expect(tableA.tableId).toBe(tableB.tableId);
+    expect(tableA.playerCount).toBe(2);
 
-      // Wait for deck initialization (6 decks: DeckA, DeckB, PlayedA, PlayedB, WonA, WonB)
-      await clientA.waitForInitDecks(6, 10000);
+    // Wait for War game to start
+    const [gameA, gameB] = await Promise.all([
+      clientA.waitForResumeGame(),
+      clientB.waitForResumeGame(),
+    ]);
+    expect(gameA).toBe('War');
+    expect(gameB).toBe('War');
 
-      // Get deck names from the init events
-      const deckEvents = clientA.getReceivedEvents('initDeck');
-      const deckKeys = deckEvents.map((e) => e[0] as string);
+    // Wait for deck initialization (6 decks: DeckA, DeckB, PlayedA, PlayedB, WonA, WonB)
+    await clientA.waitForInitDecks(6, 10000);
 
-      // Find the player deck keys (contain 'DeckA' or 'DeckB')
-      const deckAKey = deckKeys.find((k) => k.includes(':deck:DeckA'));
-      const deckBKey = deckKeys.find((k) => k.includes(':deck:DeckB'));
-      expect(deckAKey).toBeDefined();
-      expect(deckBKey).toBeDefined();
+    // Get deck names from the init events
+    const deckEvents = clientA.getReceivedEvents('initDeck');
+    const deckKeys = deckEvents.map((e) => e[0] as string);
 
-      // Play rounds until game completes (with 2 cards each, max 4 rounds)
-      // Each round: both players click their deck, cards are played, winner takes cards
-      clientA.clearReceivedEvents();
-      clientB.clearReceivedEvents();
+    // Find the player deck keys (contain 'DeckA' or 'DeckB')
+    const deckAKey = deckKeys.find((k) => k.includes(':deck:DeckA'));
+    const deckBKey = deckKeys.find((k) => k.includes(':deck:DeckB'));
+    expect(deckAKey).toBeDefined();
+    expect(deckBKey).toBeDefined();
 
-      let roundsPlayed = 0;
-      const maxRounds = 10; // Safety limit
+    // Play rounds until game completes (with 2 cards each, max 4 rounds)
+    // Each round: both players click their deck, cards are played, winner takes cards
+    clientA.clearReceivedEvents();
+    clientB.clearReceivedEvents();
 
-      while (roundsPlayed < maxRounds) {
-        // Both players click their decks
-        clientA.clickDeck(deckAKey!);
-        clientB.clickDeck(deckBKey!);
+    let roundsPlayed = 0;
+    const maxRounds = 10; // Safety limit
 
-        // Wait for round result message
+    while (roundsPlayed < maxRounds) {
+      // Both players click their decks
+      clientA.clickDeck(deckAKey!);
+      clientB.clickDeck(deckBKey!);
+
+      // Wait for round result message
+      try {
+        const msg = await clientA.waitForMessage('wins round', 5000);
+        expect(msg).toContain('wins round');
+        roundsPlayed++;
+      } catch {
+        // Could be a tie or game over
         try {
-          const msg = await clientA.waitForMessage('wins round', 5000);
-          expect(msg).toContain('wins round');
+          await clientA.waitForMessage("It's a tie!", 1000);
           roundsPlayed++;
         } catch {
-          // Could be a tie or game over
-          try {
-            await clientA.waitForMessage("It's a tie!", 1000);
-            roundsPlayed++;
-          } catch {
-            // No more cards to play - game should be over
-            break;
-          }
+          // No more cards to play - game should be over
+          break;
         }
       }
-
-      // Game should complete within expected rounds
-      expect(roundsPlayed).toBeGreaterThan(0);
-      expect(roundsPlayed).toBeLessThanOrEqual(maxRounds);
-    } finally {
-      // Restore original implementation
-      getShuffledDeckSpy.mockRestore();
     }
+
+    // Game should complete within expected rounds
+    expect(roundsPlayed).toBeGreaterThan(0);
+    expect(roundsPlayed).toBeLessThanOrEqual(maxRounds);
   });
 });
