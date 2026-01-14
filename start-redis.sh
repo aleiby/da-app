@@ -15,5 +15,8 @@ if [ ! -f "$REDIS_CONF" ]; then
     exit 1
 fi
 
+# Ensure data directory exists
+mkdir -p .redis
+
 echo "Starting Redis server..."
 $REDIS_BIN $REDIS_CONF

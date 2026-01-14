@@ -16,9 +16,8 @@
 # installation files
 .redis-install/
 
-# redis data (keep directory structure, ignore contents)
-.redis/*
-!.redis/.gitkeep
+# redis data
+.redis/
 *.rdb
 *.aof
 

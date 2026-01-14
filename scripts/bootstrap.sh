@@ -149,6 +149,7 @@ if [ "$REDIS_RUNNING" = "false" ]; then
     if [ -f "$REDIS_SERVER" ] || command -v redis-server &> /dev/null; then
         echo "  Starting Redis server in background..."
         if [ -f "$PROJECT_ROOT/redis.conf" ]; then
+            mkdir -p "$PROJECT_ROOT/.redis"
             nohup $REDIS_SERVER "$PROJECT_ROOT/redis.conf" > /dev/null 2>&1 &
             sleep 2
             # Re-check which CLI to use
