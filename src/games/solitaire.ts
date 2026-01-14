@@ -14,6 +14,16 @@ import { broadcastMsg, revealCard } from '../cardtable';
 import { minorCards } from '../tarot';
 import { sleep } from '../utils';
 
+// Test configuration: limit deck size for fast test completion
+const getTestDeckSize = (): number | undefined => {
+  const envValue = process.env.TEST_DECK_SIZE;
+  if (envValue) {
+    const size = parseInt(envValue, 10);
+    return isNaN(size) ? undefined : size;
+  }
+  return undefined;
+};
+
 export class Solitaire extends CardGame {
   static get requiredPlayers() {
     return 1;
@@ -187,7 +197,7 @@ export class Solitaire extends CardGame {
 
       // TODO: Mark cards black vs red (scoped to table)
       const player = this.players[0];
-      stock.add(await getShuffledDeck(player, DeckContents.MinorOnly));
+      stock.add(await getShuffledDeck(player, DeckContents.MinorOnly, getTestDeckSize()));
       for (let i = 0; i < tableau.length; i++) {
         for (let j = i; j < tableau.length; j++) {
           const pile = tableau[j];

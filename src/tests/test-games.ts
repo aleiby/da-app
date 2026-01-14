@@ -860,6 +860,23 @@ describe('Browse Mode', () => {
 // ============================================================
 
 describe('Solitaire Game', () => {
+  // Use small deck for fast test completion
+  const originalDeckSize = process.env.TEST_DECK_SIZE;
+
+  beforeEach(() => {
+    // Set small deck size for fast tests (28 cards = minimum for 7 tableau piles)
+    process.env.TEST_DECK_SIZE = '28';
+  });
+
+  afterEach(() => {
+    // Restore original value
+    if (originalDeckSize !== undefined) {
+      process.env.TEST_DECK_SIZE = originalDeckSize;
+    } else {
+      delete process.env.TEST_DECK_SIZE;
+    }
+  });
+
   test.sequential('solitaire game starts with proper setup', async () => {
     const client = new TestClient(generateTestWallet());
     testClients.push(client);
