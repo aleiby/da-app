@@ -59,7 +59,7 @@ function App() {
       unityContext.send(
         gameManager,
         'SetHostAddress',
-        host.startsWith('localhost') ? 'http://localhost:8080' : `https://${host}`
+        host.startsWith('localhost') ? 'http://localhost:3001' : `https://${host}`
       );
     });
     unityContext.on('GetWalletAddress', async () => {

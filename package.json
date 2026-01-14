@@ -55,7 +55,7 @@
     "format:check": "prettier --check src",
     "redis-start": "./start-redis.sh",
     "redis-restart": "sudo service redis-server restart",
-    "server-dev": "NODE_ENV=development nodemon --ignore sets/ ./src/server.ts",
+    "server-dev": "PORT=3001 NODE_ENV=development nodemon --ignore sets/ ./src/server.ts",
     "test:contracts": "./python/tests/run_tests.sh",
     "dev:reset": "./scripts/reset-dev-state.sh",
     "generate-tezos-account": "npx ts-node ./scripts/generate-tezos-account.ts",
