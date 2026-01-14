@@ -151,8 +151,7 @@ kill -9 <PID>
 ## Next Steps
 
 - Read `SETUP.md` for detailed configuration
-- Review `CLAUDE.md` for architecture overview
-- Check `AGENTS.md` for development guidelines
+- Review `AGENTS.md` for architecture and development guidelines
 - Explore the codebase starting with `src/server.ts`
 
 ## Architecture at a Glance

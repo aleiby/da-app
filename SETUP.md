@@ -487,7 +487,7 @@ After completing setup:
 
 1. Verify all services are running (Redis, MongoDB, server, client)
 2. Test the development environment
-3. Review the architecture documentation in `CLAUDE.md` and `AGENTS.md`
+3. Review the architecture documentation in `AGENTS.md`
 4. Explore the codebase starting with `src/server.ts`
 5. Run the test suite to ensure everything works
 

@@ -23,7 +23,7 @@ This will check prerequisites, install dependencies, start Redis, set up configu
 For more detailed guides:
 - **[Quick Start Guide](QUICKSTART.md)** - Get up and running in under 10 minutes
 - **[Complete Setup Documentation](SETUP.md)** - Detailed installation and configuration guide
-- **[Architecture & Development Guide](CLAUDE.md)** - For AI agents and developers
+- **[Architecture & Development Guide](AGENTS.md)** - For AI agents and developers
 
 ### Alternative: Docker Compose
 

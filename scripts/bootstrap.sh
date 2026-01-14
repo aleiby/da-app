@@ -257,7 +257,7 @@ echo ""
 echo "For more information:"
 echo "   - QUICKSTART.md   - Quick start guide"
 echo "   - SETUP.md        - Detailed setup documentation"
-echo "   - CLAUDE.md       - Architecture & development guide"
+echo "   - AGENTS.md       - Architecture & development guide"
 echo ""
 
 exit $ERRORS
