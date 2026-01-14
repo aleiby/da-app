@@ -34,11 +34,7 @@ When making technical decisions, consider:
 
 ### Design Principles
 
-**1. Verify with metrics, not narratives**
-
-When checking test results, verify quantitative metrics (counts, exit codes, timing) first. Message logs may be historical, cached, or misleading. "Rounds played: 0" matters more than chat messages showing gameplay.
-
-**2. Symmetric events**
+**Symmetric events**
 
 If there's a notification for entering a state, there should be one for leaving it.
 
