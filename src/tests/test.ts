@@ -134,7 +134,8 @@ test('players', async () => {
 
 import { io as ioClient, Socket } from 'socket.io-client';
 
-const SERVER_URL = 'http://localhost:8080';
+const TEST_PORT = process.env.TEST_PORT || process.env.PORT || '8080';
+const SERVER_URL = `http://localhost:${TEST_PORT}`;
 
 // Helper to wait for server to be ready
 async function waitForServer(maxAttempts = 30): Promise<boolean> {
