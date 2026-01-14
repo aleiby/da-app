@@ -33,8 +33,53 @@ When making technical decisions, consider:
 3. **Independence** - Prefer solutions that don't create vendor lock-in or require ongoing business relationships
 
 ### Design Principles
-1. **Verify with metrics, not narratives** - When checking test results, verify quantitative metrics (counts, exit codes, timing) first. Message logs may be historical, cached, or misleading. "Rounds played: 0" matters more than chat messages showing gameplay.
-2. **Symmetric events** - If there's a notification for entering a state, there should be one for leaving it. "Player joined" needs "Player left". This applies to game events, UI feedback, and state transitions.
+
+**1. Verify with metrics, not narratives**
+
+When checking test results, verify quantitative metrics (counts, exit codes, timing) first. Message logs may be historical, cached, or misleading. "Rounds played: 0" matters more than chat messages showing gameplay.
+
+**2. Symmetric events**
+
+If there's a notification for entering a state, there should be one for leaving it.
+
+Examples:
+```typescript
+// ✅ GOOD: Symmetric events
+socket.emit('player-joined', { player });
+// ... later ...
+socket.emit('player-left', { player });
+
+// ❌ BAD: Missing leave event
+socket.emit('player-joined', { player });
+// No corresponding leave notification
+```
+
+```python
+# ✅ GOOD: Balanced state transitions
+logger.info("Starting background task")
+try:
+    do_work()
+finally:
+    logger.info("Background task completed")
+
+# ❌ BAD: No completion notification
+logger.info("Starting background task")
+do_work()
+# No indication when it finishes
+```
+
+Applies to:
+- Game events (join/leave, start/end, pause/resume)
+- UI feedback (loading start/end, modal open/close)
+- State transitions (connecting/disconnected, active/inactive)
+- Resource management (acquire/release, open/close)
+- Logging (begin/end, start/complete)
+
+Benefits:
+- Makes debugging easier (you can trace full lifecycle)
+- Prevents leaked resources (listeners, connections, locks)
+- Improves UX (users know when operations complete)
+- Enables proper cleanup (teardown matches setup)
 
 ## Commands
 
