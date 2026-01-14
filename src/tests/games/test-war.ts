@@ -18,6 +18,9 @@ import {
   waitForServer,
 } from '../socket-helpers';
 
+// Import cards to trigger server startup side effect (ensures server runs in same process)
+import '../../cards';
+
 // Redis client for test setup/cleanup
 let redis: Awaited<ReturnType<typeof createClient>>;
 
