@@ -12,7 +12,8 @@
  * required for the server integration tests at the bottom of this file.
  */
 import { test, expect, beforeEach } from 'vitest';
-import { initDeck, registerCards } from '../cards';
+import { initDeck, registerCards, getShuffledDeck, DeckContents } from '../cards';
+import { totalCards } from '../tarot';
 import { newTable, numPlayers, getPlayerSeat } from '../cardtable';
 import { createTestRedisClient } from './socket-helpers';
 
@@ -119,6 +120,47 @@ test('players', async () => {
   expect(seatA).toBe('A');
   expect(seatB).toBe('B');
   expect(await getPlayerSeat(tableId, 'PlayerC')).not.toBe('C');
+});
+
+// ============================================================
+// getShuffledDeck limit parameter tests
+// ============================================================
+
+test('getShuffledDeck with limit returns exactly that many cards', async () => {
+  const cards = await getShuffledDeck('tz1TestWallet', DeckContents.AllCards, 5);
+  expect(cards.length).toBe(5);
+});
+
+test('getShuffledDeck with limit=10 returns 10 cards', async () => {
+  const cards = await getShuffledDeck('tz1TestWallet', DeckContents.AllCards, 10);
+  expect(cards.length).toBe(10);
+});
+
+test('getShuffledDeck without limit returns full deck', async () => {
+  const cards = await getShuffledDeck('tz1TestWallet', DeckContents.AllCards);
+  expect(cards.length).toBe(totalCards);
+});
+
+test('getShuffledDeck with limit=0 returns full deck', async () => {
+  // limit=0 is treated as "no limit" due to the > 0 check
+  const cards = await getShuffledDeck('tz1TestWallet', DeckContents.AllCards, 0);
+  expect(cards.length).toBe(totalCards);
+});
+
+test('getShuffledDeck with limit > deck size returns full deck', async () => {
+  // Requesting more cards than exist should return all available cards
+  const cards = await getShuffledDeck('tz1TestWallet', DeckContents.AllCards, 9999);
+  expect(cards.length).toBe(totalCards);
+});
+
+test('getShuffledDeck with limit works for MinorOnly deck', async () => {
+  const cards = await getShuffledDeck('tz1TestWallet', DeckContents.MinorOnly, 3);
+  expect(cards.length).toBe(3);
+});
+
+test('getShuffledDeck with limit works for MajorOnly deck', async () => {
+  const cards = await getShuffledDeck('tz1TestWallet', DeckContents.MajorOnly, 5);
+  expect(cards.length).toBe(5);
 });
 
 // ============================================================
