@@ -1,12 +1,16 @@
 #!/bin/bash
 # Start Redis server for Digital Arcana development
 
-REDIS_BIN="./.redis-install/redis-7.0.15/src/redis-server"
 REDIS_CONF="./redis.conf"
 
-if [ ! -f "$REDIS_BIN" ]; then
-    echo "Error: Redis binary not found at $REDIS_BIN"
-    echo "Please run the installation script first."
+# Prefer system Redis, fall back to local install
+if command -v redis-server &> /dev/null; then
+    REDIS_BIN="redis-server"
+elif [ -f "./.redis-install/redis-7.0.15/src/redis-server" ]; then
+    REDIS_BIN="./.redis-install/redis-7.0.15/src/redis-server"
+else
+    echo "Error: redis-server not found"
+    echo "Install Redis system-wide or run: bash scripts/install-redis.sh"
     exit 1
 fi
 
