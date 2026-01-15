@@ -2,14 +2,11 @@
  * Express + Socket.io server for Digital Arcana
  *
  * WARNING: This module has side effects on import!
- * When this file is imported (directly or transitively), it immediately:
- *   1. Connects to Redis
- *   2. Creates and configures the Express app
- *   3. Starts the HTTP server on PORT (must be 3001-3016 for Redis DB isolation)
+ * When this file is imported, it immediately:
+ *   1. Creates and configures the Express app
+ *   2. Starts the HTTP server on PORT (must be 3001-3016 for Redis DB isolation)
  *
- * This behavior exists because cards.ts imports `redis` from this file,
- * and many modules import from cards.ts. The tests rely on this behavior
- * to have a running server without explicit setup.
+ * For Redis-only access without server side effects, import from ./redis instead.
  *
  * PORT RANGE RATIONALE:
  * - 3000: Reserved for Vite dev client
@@ -22,7 +19,6 @@ import express from 'express';
 import http from 'http';
 import path from 'path';
 import rateLimit from 'express-rate-limit';
-import { createClient } from 'redis';
 import { Server, Socket } from 'socket.io';
 import { isDevelopment } from './utils';
 import { mintSet } from './admin';
@@ -30,39 +26,13 @@ import { openPack } from './marketplace';
 import { Connection, getUserName } from './connection';
 import { getPlayer } from './cardtable';
 import { getAvatar } from './avatars';
+import { redis, RedisClientType, BASE_PORT } from './redis';
 
-// Port configuration with validation for Redis DB isolation.
-// Each port in range 3001-3016 maps to Redis DB 0-15, enabling parallel test runs.
-// See module header for port range rationale (avoiding 8080 gt dashboard conflict).
-const BASE_PORT = 3001;
-const MAX_PORT = 3016; // 16 DBs (0-15)
+// Re-export for backwards compatibility
+export { redis };
+export type { RedisClientType };
+
 const port = parseInt(process.env.PORT || String(BASE_PORT), 10);
-
-if (port < BASE_PORT || port > MAX_PORT) {
-  throw new Error(
-    `PORT must be in range ${BASE_PORT}-${MAX_PORT} for Redis DB isolation. Got: ${port}`
-  );
-}
-
-const redisDb = port - BASE_PORT;
-
-// Connect to Redis db.
-// In production (QOVERY_REDIS_Z8BD2191C_DATABASE_URL set), use the cloud Redis.
-// In development, use local Redis with DB based on port for test isolation.
-export type RedisClientType = ReturnType<typeof createClient>;
-export const redis: RedisClientType = createClient({
-  url: process.env.QOVERY_REDIS_Z8BD2191C_DATABASE_URL,
-  database: process.env.QOVERY_REDIS_Z8BD2191C_DATABASE_URL ? undefined : redisDb,
-  socket: { connectTimeout: isDevelopment ? 600000 : 5000 },
-});
-(async () => {
-  redis.on('error', (err) => console.log(`Redis: ${err}`));
-  redis.on('connect', () => console.log('Redis: connect'));
-  redis.on('ready', () => console.log('Redis: ready'));
-  redis.on('end', () => console.log('Redis: end'));
-  redis.on('reconnecting', () => console.log('Redis: reconnecting'));
-  await redis.connect();
-})();
 
 // Setup express server.
 const app = express();

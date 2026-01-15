@@ -1,7 +1,7 @@
 import { strict as assert } from 'assert';
 import { totalCards, totalMinor, majorArcana } from './tarot';
 import { shuffle } from './utils';
-import { redis } from './server';
+import { redis } from './redis';
 import { sendEvent } from './connection';
 
 export type Card = {
