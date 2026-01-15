@@ -6,7 +6,7 @@
  * When server.ts loads, it immediately:
  *   1. Connects to Redis
  *   2. Creates Express app and Socket.io server
- *   3. Starts listening on port 8080
+ *   3. Starts listening on port 3001
  *
  * This means the server is running for all tests in this file, which is
  * required for the server integration tests at the bottom of this file.
@@ -170,7 +170,7 @@ test('getShuffledDeck with limit works for MajorOnly deck', async () => {
 
 import { io as ioClient, Socket } from 'socket.io-client';
 
-const PORT = process.env.PORT || '8080';
+const PORT = process.env.PORT || '3001';
 const SERVER_URL = `http://localhost:${PORT}`;
 
 // Helper to wait for server to be ready
@@ -287,12 +287,12 @@ import { spawn } from 'child_process';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 
-test('server rejects PORT below valid range (8079)', async () => {
+test('server rejects PORT below valid range (3000)', async () => {
   const projectRoot = join(dirname(fileURLToPath(import.meta.url)), '../..');
 
   const result = await new Promise<{ code: number | null; stderr: string }>((resolve) => {
     const child = spawn('npx', ['tsx', join(projectRoot, 'src/server.ts')], {
-      env: { ...process.env, PORT: '8079' },
+      env: { ...process.env, PORT: '3000' },
       cwd: projectRoot,
     });
 
@@ -315,15 +315,15 @@ test('server rejects PORT below valid range (8079)', async () => {
   });
 
   expect(result.code).not.toBe(0);
-  expect(result.stderr).toContain('PORT must be in range 8080-8095');
+  expect(result.stderr).toContain('PORT must be in range 3001-3016');
 });
 
-test('server rejects PORT above valid range (8096)', async () => {
+test('server rejects PORT above valid range (3017)', async () => {
   const projectRoot = join(dirname(fileURLToPath(import.meta.url)), '../..');
 
   const result = await new Promise<{ code: number | null; stderr: string }>((resolve) => {
     const child = spawn('npx', ['tsx', join(projectRoot, 'src/server.ts')], {
-      env: { ...process.env, PORT: '8096' },
+      env: { ...process.env, PORT: '3017' },
       cwd: projectRoot,
     });
 
@@ -344,5 +344,5 @@ test('server rejects PORT above valid range (8096)', async () => {
   });
 
   expect(result.code).not.toBe(0);
-  expect(result.stderr).toContain('PORT must be in range 8080-8095');
+  expect(result.stderr).toContain('PORT must be in range 3001-3016');
 });

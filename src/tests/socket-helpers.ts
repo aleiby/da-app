@@ -8,7 +8,8 @@ import { io as ioClient, Socket } from 'socket.io-client';
 import { createClient } from 'redis';
 import type { RedisClientType } from '../server';
 
-const PORT = process.env.PORT || '8080';
+// Default port 3001 matches server.ts BASE_PORT (range 3001-3016 for Redis DB isolation)
+const PORT = process.env.PORT || '3001';
 export const SERVER_URL = `http://localhost:${PORT}`;
 export const DEFAULT_TIMEOUT = 5000;
 
@@ -362,10 +363,10 @@ export class TestClient {
 
 /**
  * Get Redis database number based on PORT for test isolation.
- * Matches the logic in server.ts.
+ * Matches the logic in server.ts (range 3001-3016 -> DB 0-15).
  */
 function getRedisDb(): number {
-  const BASE_PORT = 8080;
+  const BASE_PORT = 3001;
   const port = parseInt(process.env.PORT || String(BASE_PORT), 10);
   return port - BASE_PORT;
 }

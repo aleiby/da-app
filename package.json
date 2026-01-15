@@ -82,6 +82,7 @@
     "@playwright/test": "^1.57.0",
     "@types/bip39": "^2.4.2",
     "@types/express": "^5.0.6",
+    "@types/identicon.js": "^2.3.5",
     "@vitejs/plugin-react": "^4.3.0",
     "@vitest/coverage-v8": "^1.6.1",
     "bip39": "^3.1.0",

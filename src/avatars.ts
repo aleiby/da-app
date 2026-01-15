@@ -1,11 +1,10 @@
 import { getPlayer } from './cardtable';
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const Identicon = require('identicon.js');
+import Identicon from 'identicon.js';
 
 export const getAvatar = async (
   userId: string,
   size = 64,
-  background = [11, 47, 108]
+  background: [number, number, number, number] = [11, 47, 108, 255]
 ): Promise<Buffer | null> => {
   try {
     const player = await getPlayer(userId);

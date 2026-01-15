@@ -5,11 +5,18 @@
  * When this file is imported (directly or transitively), it immediately:
  *   1. Connects to Redis
  *   2. Creates and configures the Express app
- *   3. Starts the HTTP server on PORT (must be 8080-8095 for Redis DB isolation)
+ *   3. Starts the HTTP server on PORT (must be 3001-3016 for Redis DB isolation)
  *
  * This behavior exists because cards.ts imports `redis` from this file,
  * and many modules import from cards.ts. The tests rely on this behavior
  * to have a running server without explicit setup.
+ *
+ * PORT RANGE RATIONALE:
+ * - 3000: Reserved for Vite dev client
+ * - 3001-3016: Game server range (16 ports for Redis DB 0-15 isolation)
+ * - 8080: Reserved for Gas Town dashboard (gt serve)
+ *
+ * DO NOT use 8080-8095 - conflicts with gt dashboard!
  */
 import express from 'express';
 import http from 'http';
@@ -25,9 +32,10 @@ import { getPlayer } from './cardtable';
 import { getAvatar } from './avatars';
 
 // Port configuration with validation for Redis DB isolation.
-// Each port in range 8080-8095 maps to Redis DB 0-15, enabling parallel test runs.
-const BASE_PORT = 8080;
-const MAX_PORT = 8095; // 16 DBs (0-15)
+// Each port in range 3001-3016 maps to Redis DB 0-15, enabling parallel test runs.
+// See module header for port range rationale (avoiding 8080 gt dashboard conflict).
+const BASE_PORT = 3001;
+const MAX_PORT = 3016; // 16 DBs (0-15)
 const port = parseInt(process.env.PORT || String(BASE_PORT), 10);
 
 if (port < BASE_PORT || port > MAX_PORT) {
