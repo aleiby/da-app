@@ -5,7 +5,7 @@
  * When this file is imported (directly or transitively), it immediately:
  *   1. Connects to Redis
  *   2. Creates and configures the Express app
- *   3. Starts the HTTP server on port 8080
+ *   3. Starts the HTTP server on PORT or 8080
  *
  * This behavior exists because cards.ts imports `redis` from this file,
  * and many modules import from cards.ts. The tests rely on this behavior
