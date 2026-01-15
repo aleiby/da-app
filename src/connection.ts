@@ -12,7 +12,7 @@ import {
 } from './cardtable';
 import { collectCards } from './cardcollector';
 import { Socket } from 'socket.io';
-import { redis } from './server';
+import { redis } from './redis';
 import { strict as assert } from 'assert';
 import { isDevelopment } from './utils';
 

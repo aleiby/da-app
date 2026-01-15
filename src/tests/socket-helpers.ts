@@ -6,7 +6,7 @@
  */
 import { io as ioClient, Socket } from 'socket.io-client';
 import { createClient } from 'redis';
-import type { RedisClientType } from '../server';
+import type { RedisClientType } from '../redis';
 import { PORT, BASE_PORT } from '../redis';
 
 // Use PORT from redis.ts which handles VITEST_POOL_ID for parallel workers

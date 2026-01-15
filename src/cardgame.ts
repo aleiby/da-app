@@ -1,7 +1,7 @@
 import { getPlayers, broadcastMsg } from './cardtable';
 import { hasOwned } from './cards';
 import { sleep } from './utils';
-import { redis, RedisClientType } from './server';
+import { redis, RedisClientType } from './redis';
 
 interface ClickArgs {
   userId: string;
