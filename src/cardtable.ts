@@ -1,7 +1,7 @@
 import { Card } from './cards';
 import { getUserName, sendEvent } from './connection';
 import { strict as assert } from 'assert';
-import { redis } from './server';
+import { redis } from './redis';
 import { Browse } from './games/browse';
 import { Solitaire } from './games/solitaire';
 import { War } from './games/war';
