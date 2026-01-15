@@ -5,7 +5,7 @@
  * When this file is imported (directly or transitively), it immediately:
  *   1. Connects to Redis
  *   2. Creates and configures the Express app
- *   3. Starts the HTTP server on PORT or 8080
+ *   3. Starts the HTTP server on PORT (must be 8080-8095 for Redis DB isolation)
  *
  * This behavior exists because cards.ts imports `redis` from this file,
  * and many modules import from cards.ts. The tests rely on this behavior
@@ -24,10 +24,27 @@ import { Connection, getUserName } from './connection';
 import { getPlayer } from './cardtable';
 import { getAvatar } from './avatars';
 
+// Port configuration with validation for Redis DB isolation.
+// Each port in range 8080-8095 maps to Redis DB 0-15, enabling parallel test runs.
+const BASE_PORT = 8080;
+const MAX_PORT = 8095; // 16 DBs (0-15)
+const port = parseInt(process.env.PORT || String(BASE_PORT), 10);
+
+if (port < BASE_PORT || port > MAX_PORT) {
+  throw new Error(
+    `PORT must be in range ${BASE_PORT}-${MAX_PORT} for Redis DB isolation. Got: ${port}`
+  );
+}
+
+const redisDb = port - BASE_PORT;
+
 // Connect to Redis db.
+// In production (QOVERY_REDIS_Z8BD2191C_DATABASE_URL set), use the cloud Redis.
+// In development, use local Redis with DB based on port for test isolation.
 export type RedisClientType = ReturnType<typeof createClient>;
 export const redis: RedisClientType = createClient({
   url: process.env.QOVERY_REDIS_Z8BD2191C_DATABASE_URL,
+  database: process.env.QOVERY_REDIS_Z8BD2191C_DATABASE_URL ? undefined : redisDb,
   socket: { connectTimeout: isDevelopment ? 600000 : 5000 },
 });
 (async () => {
@@ -47,7 +64,6 @@ export const io = new Server(server, {
     origin: ['http://localhost:3000'],
   },
 });
-const port = process.env.PORT || 8080;
 
 // Export server for test cleanup
 export { server };

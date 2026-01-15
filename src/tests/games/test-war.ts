@@ -8,7 +8,6 @@
  * - Game completion with small decks
  */
 import { test, expect, beforeEach, afterEach, describe } from 'vitest';
-import { createClient } from 'redis';
 import {
   TestClient,
   cleanupTestData,
@@ -16,17 +15,18 @@ import {
   connectAll,
   disconnectAll,
   waitForServer,
+  createTestRedisClient,
 } from '../socket-helpers';
+import type { RedisClientType } from '../../server';
 
 // Redis client for test setup/cleanup
-let redis: Awaited<ReturnType<typeof createClient>>;
+let redis: RedisClientType;
 
 // Track test clients for cleanup
 let testClients: TestClient[] = [];
 
 beforeEach(async () => {
-  redis = createClient();
-  await redis.connect();
+  redis = await createTestRedisClient();
   testClients = [];
   await waitForServer();
 });

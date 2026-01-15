@@ -361,10 +361,21 @@ export class TestClient {
 }
 
 /**
- * Helper to create a Redis client for test cleanup
+ * Get Redis database number based on PORT for test isolation.
+ * Matches the logic in server.ts.
+ */
+function getRedisDb(): number {
+  const BASE_PORT = 8080;
+  const port = parseInt(process.env.PORT || String(BASE_PORT), 10);
+  return port - BASE_PORT;
+}
+
+/**
+ * Helper to create a Redis client for tests.
+ * Uses the same database as the server based on PORT.
  */
 export async function createTestRedisClient(): Promise<RedisClientType> {
-  const redis = createClient();
+  const redis = createClient({ database: getRedisDb() });
   await redis.connect();
   return redis as RedisClientType;
 }

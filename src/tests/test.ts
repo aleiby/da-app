@@ -12,15 +12,14 @@
  * required for the server integration tests at the bottom of this file.
  */
 import { test, expect, beforeEach } from 'vitest';
-import { createClient } from 'redis';
 import { initDeck, registerCards } from '../cards';
 import { newTable, numPlayers, getPlayerSeat } from '../cardtable';
+import { createTestRedisClient } from './socket-helpers';
 
 const tableId = 'table:test';
 
 beforeEach(async () => {
-  const redis = createClient();
-  await redis.connect();
+  const redis = await createTestRedisClient();
   // Redis 5.x: use KEYS command for test cleanup (acceptable in test environment)
   const keys = await redis.keys(`${tableId}*`);
   if (keys.length > 0) {
@@ -30,12 +29,7 @@ beforeEach(async () => {
 });
 
 test('redis connection', async () => {
-  const redis = createClient();
-  await new Promise<void>((resolve, reject) => {
-    redis.on('connect', () => resolve());
-    redis.on('error', () => reject(new Error('Redis connection error')));
-    redis.connect();
-  });
+  const redis = await createTestRedisClient();
   console.log(await redis.info('Server'));
   await redis.disconnect();
 });
@@ -240,4 +234,73 @@ test.sequential('Socket.io /browser namespace emits isDevelopment flag', async (
       reject(err);
     });
   });
+});
+
+// ============================================================
+// Port Range Validation Tests
+// These verify that the server rejects invalid PORT values
+// ============================================================
+
+import { spawn } from 'child_process';
+import { dirname, join } from 'path';
+import { fileURLToPath } from 'url';
+
+test('server rejects PORT below valid range (8079)', async () => {
+  const projectRoot = join(dirname(fileURLToPath(import.meta.url)), '../..');
+
+  const result = await new Promise<{ code: number | null; stderr: string }>((resolve) => {
+    const child = spawn('npx', ['tsx', join(projectRoot, 'src/server.ts')], {
+      env: { ...process.env, PORT: '8079' },
+      cwd: projectRoot,
+    });
+
+    let stderr = '';
+    child.stderr.on('data', (data) => {
+      stderr += data.toString();
+    });
+
+    // Also capture stdout in case error goes there
+    child.stdout.on('data', (data) => {
+      stderr += data.toString();
+    });
+
+    child.on('close', (code) => {
+      resolve({ code, stderr });
+    });
+
+    // Kill after timeout to avoid hanging
+    setTimeout(() => child.kill(), 5000);
+  });
+
+  expect(result.code).not.toBe(0);
+  expect(result.stderr).toContain('PORT must be in range 8080-8095');
+});
+
+test('server rejects PORT above valid range (8096)', async () => {
+  const projectRoot = join(dirname(fileURLToPath(import.meta.url)), '../..');
+
+  const result = await new Promise<{ code: number | null; stderr: string }>((resolve) => {
+    const child = spawn('npx', ['tsx', join(projectRoot, 'src/server.ts')], {
+      env: { ...process.env, PORT: '8096' },
+      cwd: projectRoot,
+    });
+
+    let stderr = '';
+    child.stderr.on('data', (data) => {
+      stderr += data.toString();
+    });
+
+    child.stdout.on('data', (data) => {
+      stderr += data.toString();
+    });
+
+    child.on('close', (code) => {
+      resolve({ code, stderr });
+    });
+
+    setTimeout(() => child.kill(), 5000);
+  });
+
+  expect(result.code).not.toBe(0);
+  expect(result.stderr).toContain('PORT must be in range 8080-8095');
 });

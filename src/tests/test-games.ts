@@ -9,7 +9,6 @@
  * - Error cases and disconnections
  */
 import { test, expect, beforeEach, afterEach, describe } from 'vitest';
-import { createClient } from 'redis';
 import {
   TestClient,
   cleanupTestData,
@@ -18,20 +17,21 @@ import {
   createTestClients,
   connectAll,
   disconnectAll,
+  createTestRedisClient,
 } from './socket-helpers';
 
 // Import cards to trigger server startup side effect
 import '../cards';
+import type { RedisClientType } from '../server';
 
 // Redis client for test setup/cleanup
-let redis: Awaited<ReturnType<typeof createClient>>;
+let redis: RedisClientType;
 
 // Track test clients for cleanup
 let testClients: TestClient[] = [];
 
 beforeEach(async () => {
-  redis = createClient();
-  await redis.connect();
+  redis = await createTestRedisClient();
   testClients = [];
 });
 
@@ -379,8 +379,7 @@ describe('Game Clicks', () => {
     await client.waitForResumeGame();
 
     // Subscribe to the clickDeck channel to verify click is received
-    const subscriber = createClient();
-    await subscriber.connect();
+    const subscriber = await createTestRedisClient();
 
     let receivedClick = false;
     const clickPromise = new Promise<void>((resolve) => {
@@ -424,8 +423,7 @@ describe('Game Clicks', () => {
     await client.waitForResumeGame();
 
     // Subscribe to the rightClickDeck channel
-    const subscriber = createClient();
-    await subscriber.connect();
+    const subscriber = await createTestRedisClient();
 
     let receivedClick = false;
     const clickPromise = new Promise<void>((resolve) => {
@@ -467,8 +465,7 @@ describe('Game Clicks', () => {
     await client.waitForResumeGame();
 
     // Subscribe to the clickTable channel
-    const subscriber = createClient();
-    await subscriber.connect();
+    const subscriber = await createTestRedisClient();
 
     let receivedClick = false;
     const clickPromise = new Promise<void>((resolve) => {
@@ -516,8 +513,7 @@ describe('Redis Pub/Sub', () => {
     await client.waitForResumeGame();
 
     // Subscribe to the clickDeck channel
-    const subscriber = createClient();
-    await subscriber.connect();
+    const subscriber = await createTestRedisClient();
 
     let receivedMessage: string | null = null;
     const messagePromise = new Promise<void>((resolve) => {
@@ -783,8 +779,7 @@ describe('Browse Mode', () => {
     await client.waitForResumeGame();
 
     // Subscribe to clickDeck channel to verify click delivery
-    const subscriber = createClient();
-    await subscriber.connect();
+    const subscriber = await createTestRedisClient();
 
     let receivedClick = false;
     const clickPromise = new Promise<void>((resolve) => {
@@ -824,8 +819,7 @@ describe('Browse Mode', () => {
     await client.waitForResumeGame();
 
     // Subscribe to clickTable channel
-    const subscriber = createClient();
-    await subscriber.connect();
+    const subscriber = await createTestRedisClient();
 
     let receivedClick = false;
     const clickPromise = new Promise<void>((resolve) => {
