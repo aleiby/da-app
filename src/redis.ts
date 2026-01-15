@@ -17,13 +17,38 @@ import { isDevelopment } from './utils';
 export const BASE_PORT = 3001;
 export const MAX_PORT = 3016; // 16 DBs (0-15)
 
-const port = parseInt(process.env.PORT || String(BASE_PORT), 10);
+/**
+ * Calculate port for this process.
+ * Priority: explicit PORT env var > VITEST_POOL_ID calculation > default BASE_PORT.
+ * VITEST_POOL_ID is used for parallel test workers when PORT isn't explicitly set.
+ */
+function getPort(): number {
+  // Explicit PORT takes precedence (needed for spawned subprocess tests)
+  if (process.env.PORT !== undefined) {
+    return parseInt(process.env.PORT, 10);
+  }
+  // In vitest parallel mode, derive port from pool ID for worker isolation
+  const vitestPoolId = process.env.VITEST_POOL_ID;
+  if (vitestPoolId !== undefined) {
+    // Vitest forks pool uses 1-indexed pool IDs
+    const poolId = parseInt(vitestPoolId, 10);
+    return BASE_PORT + ((poolId - 1) % 16);
+  }
+  return BASE_PORT;
+}
 
-if (port < BASE_PORT || port > MAX_PORT) {
+const port = getPort();
+
+// Validate port range when explicitly set (vitest auto-calculated ports are always valid)
+const isExplicitPort = process.env.PORT !== undefined;
+if (isExplicitPort && (port < BASE_PORT || port > MAX_PORT)) {
   throw new Error(
     `PORT must be in range ${BASE_PORT}-${MAX_PORT} for Redis DB isolation. Got: ${port}`
   );
 }
+
+// Export the calculated port for use by other modules
+export const PORT = port;
 
 export const redisDb = port - BASE_PORT;
 

@@ -26,13 +26,14 @@ import { openPack } from './marketplace';
 import { Connection, getUserName } from './connection';
 import { getPlayer } from './cardtable';
 import { getAvatar } from './avatars';
-import { redis, RedisClientType, BASE_PORT } from './redis';
+import { redis, RedisClientType, PORT } from './redis';
 
 // Re-export for backwards compatibility
 export { redis };
 export type { RedisClientType };
 
-const port = parseInt(process.env.PORT || String(BASE_PORT), 10);
+// Use PORT from redis.ts which handles VITEST_POOL_ID for parallel test workers
+const port = PORT;
 
 // Setup express server.
 const app = express();

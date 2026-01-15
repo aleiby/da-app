@@ -7,16 +7,18 @@ export default defineConfig({
     hookTimeout: 60000,
     // Use Node.js environment for server-side tests
     environment: 'node',
-    // Run tests in sequence to avoid port conflicts (server side effects)
-    // The server.ts module has side effects that start the server on import
-    // Use forks pool with single fork to avoid module isolation issues
+    // Enable file-level parallelism with isolated workers.
+    // Each worker gets a unique PORT based on VITEST_POOL_ID (see redis.ts).
+    // This maps to isolated Redis DBs (port 3001 = DB 0, 3002 = DB 1, etc).
     pool: 'forks',
     poolOptions: {
       forks: {
-        singleFork: true,
+        singleFork: false,
+        minForks: 1,
+        maxForks: 4, // Limit to 4 workers (ports 3001-3004, Redis DBs 0-3)
       },
     },
-    fileParallelism: false,
+    fileParallelism: true,
     // Setup files for test environment
     setupFiles: ['./src/tests/setup.ts'],
     // Global setup runs in main vitest process before tests

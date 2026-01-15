@@ -20,8 +20,9 @@ import {
   createTestRedisClient,
 } from './socket-helpers';
 
-// Import cards to trigger server startup side effect
-import '../cards';
+// Import server to trigger server startup side effect (previously via cards.ts chain)
+// Note: cards.ts now imports from redis.ts, not server.ts, so explicit import needed
+import '../server';
 import type { RedisClientType } from '../server';
 
 // Redis client for test setup/cleanup

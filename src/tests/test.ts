@@ -1,17 +1,15 @@
 /**
  * Test suite for Digital Arcana
  *
- * Note: Importing from "../cards" triggers a side effect that starts the server.
- * The import chain is: test.ts -> cards.ts -> server.ts
- * When server.ts loads, it immediately:
- *   1. Connects to Redis
- *   2. Creates Express app and Socket.io server
- *   3. Starts listening on port 3001
+ * Server startup: This file has both unit tests (Redis-only) and integration tests
+ * (require Express/Socket.io server). We import server.ts to start the server for
+ * the integration tests at the bottom of this file.
  *
- * This means the server is running for all tests in this file, which is
- * required for the server integration tests at the bottom of this file.
+ * Note: cards.ts now imports from redis.ts (not server.ts), so the old import chain
+ * no longer triggers server startup. We explicitly import server.ts for that.
  */
 import { test, expect, beforeEach } from 'vitest';
+import '../server'; // Start server for integration tests
 import { initDeck, registerCards, getShuffledDeck, DeckContents } from '../cards';
 import { totalCards } from '../tarot';
 import { newTable, numPlayers, getPlayerSeat } from '../cardtable';
@@ -169,8 +167,8 @@ test('getShuffledDeck with limit works for MajorOnly deck', async () => {
 // ============================================================
 
 import { io as ioClient, Socket } from 'socket.io-client';
+import { PORT } from '../redis';
 
-const PORT = process.env.PORT || '3001';
 const SERVER_URL = `http://localhost:${PORT}`;
 
 // Helper to wait for server to be ready

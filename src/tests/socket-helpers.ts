@@ -7,9 +7,9 @@
 import { io as ioClient, Socket } from 'socket.io-client';
 import { createClient } from 'redis';
 import type { RedisClientType } from '../server';
+import { PORT, BASE_PORT } from '../redis';
 
-// Default port 3001 matches server.ts BASE_PORT (range 3001-3016 for Redis DB isolation)
-const PORT = process.env.PORT || '3001';
+// Use PORT from redis.ts which handles VITEST_POOL_ID for parallel workers
 export const SERVER_URL = `http://localhost:${PORT}`;
 export const DEFAULT_TIMEOUT = 5000;
 
@@ -363,12 +363,10 @@ export class TestClient {
 
 /**
  * Get Redis database number based on PORT for test isolation.
- * Matches the logic in server.ts (range 3001-3016 -> DB 0-15).
+ * Uses the PORT from redis.ts which handles VITEST_POOL_ID for parallel workers.
  */
 function getRedisDb(): number {
-  const BASE_PORT = 3001;
-  const port = parseInt(process.env.PORT || String(BASE_PORT), 10);
-  return port - BASE_PORT;
+  return PORT - BASE_PORT;
 }
 
 /**

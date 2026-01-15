@@ -17,6 +17,8 @@ import {
   waitForServer,
   createTestRedisClient,
 } from '../socket-helpers';
+// Import server to trigger server startup side effect
+import '../../server';
 import type { RedisClientType } from '../../server';
 
 // Redis client for test setup/cleanup
