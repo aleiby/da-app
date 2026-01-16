@@ -1,8 +1,8 @@
 /**
- * Unit tests for Digital Arcana
+ * Deck operation tests for Digital Arcana
  *
- * These tests only require Redis - no Express/Socket.io server needed.
- * Imports are from redis.ts and cards.ts only (not server.ts).
+ * Tests deck initialization, card registration, movement, and shuffling.
+ * Requires Redis - no Express/Socket.io server needed.
  */
 import { test, expect, beforeEach } from 'vitest';
 import { initDeck, registerCards, getShuffledDeck, DeckContents } from '../cards';
