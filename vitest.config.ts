@@ -2,6 +2,11 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   test: {
+    // Set NODE_ENV to development so server registers /ping endpoint
+    // and emits isDevelopment event on /browser namespace
+    env: {
+      NODE_ENV: 'development',
+    },
     include: ['src/tests/**/test*.ts'],
     testTimeout: 60000, // 1 minute timeout
     hookTimeout: 60000,
