@@ -5,9 +5,9 @@
  * Imports are from redis.ts and cards.ts only (not server.ts).
  */
 import { test, expect, beforeEach } from 'vitest';
-import { initDeck, registerCards, getShuffledDeck, DeckContents } from '../cards';
+import { initDeck, registerCards, getShuffledDeck, DeckContents, getDeckName } from '../cards';
 import { totalCards } from '../tarot';
-import { newTable, numPlayers, getPlayerSeat } from '../cardtable';
+import { newTable, numPlayers, getPlayerSeat, requiredPlayers } from '../cardtable';
 import { createTestRedisClient } from './socket-helpers';
 
 const tableId = 'table:test';
@@ -154,4 +154,168 @@ test('getShuffledDeck with limit works for MinorOnly deck', async () => {
 test('getShuffledDeck with limit works for MajorOnly deck', async () => {
   const cards = await getShuffledDeck('tz1TestWallet', DeckContents.MajorOnly, 5);
   expect(cards.length).toBe(5);
+});
+
+// ============================================================
+// tarot.ts tests - card generation and formatting
+// ============================================================
+
+import { allCards, minorArcana, minorCards, minorSuits, majorArcana, totalMinor } from '../tarot';
+
+test('allCards returns exactly 78 cards', () => {
+  const cards = allCards();
+  expect(cards.length).toBe(78);
+  expect(cards.length).toBe(totalCards);
+});
+
+test('allCards returns no duplicates', () => {
+  const cards = allCards();
+  const uniqueCards = new Set(cards);
+  expect(uniqueCards.size).toBe(cards.length);
+});
+
+test('allCards contains exactly 56 minor arcana cards', () => {
+  const cards = allCards();
+  // Filter for minor arcana: contains '_of_' but excludes 'wheel_of_fortune' (major arcana)
+  const minorArcanaCards = cards.filter(
+    (card) => card.includes('_of_') && !majorArcana.includes(card)
+  );
+  expect(minorArcanaCards.length).toBe(56);
+  expect(minorArcanaCards.length).toBe(totalMinor);
+});
+
+test('allCards contains all 4 suits with 14 cards each', () => {
+  const cards = allCards();
+  for (const suit of minorSuits) {
+    const suitCards = cards.filter((card) => card.endsWith(`_of_${suit}`));
+    expect(suitCards.length).toBe(14);
+  }
+});
+
+test('allCards contains all 22 major arcana', () => {
+  const cards = allCards();
+  for (const major of majorArcana) {
+    expect(cards).toContain(major);
+  }
+  const majorInDeck = cards.filter((card) => majorArcana.includes(card));
+  expect(majorInDeck.length).toBe(22);
+});
+
+test('minorArcana formats card and suit correctly', () => {
+  expect(minorArcana('ace', 'pentacles')).toBe('ace_of_pentacles');
+  expect(minorArcana('king', 'swords')).toBe('king_of_swords');
+  expect(minorArcana('page', 'cups')).toBe('page_of_cups');
+});
+
+test('minorArcana handles all card-suit combinations', () => {
+  for (const card of minorCards) {
+    for (const suit of minorSuits) {
+      const result = minorArcana(card, suit);
+      expect(result).toBe(`${card}_of_${suit}`);
+      expect(result).toContain('_of_');
+    }
+  }
+});
+
+test('minorCards array has exactly 14 cards', () => {
+  expect(minorCards.length).toBe(14);
+});
+
+test('minorSuits array has exactly 4 suits', () => {
+  expect(minorSuits.length).toBe(4);
+});
+
+test('majorArcana array has exactly 22 cards', () => {
+  expect(majorArcana.length).toBe(22);
+});
+
+// ============================================================
+// getDeckName coordinate formatting tests
+// ============================================================
+
+test('getDeckName with positive coordinates', () => {
+  expect(getDeckName(1.5, 2.5)).toBe('{1.50,2.50}');
+});
+
+test('getDeckName with negative coordinates', () => {
+  expect(getDeckName(-1.5, -2.5)).toBe('{-1.50,-2.50}');
+});
+
+test('getDeckName with zero values', () => {
+  expect(getDeckName(0, 0)).toBe('{0.00,0.00}');
+});
+
+test('getDeckName with very small decimals', () => {
+  expect(getDeckName(0.001, 0.009)).toBe('{0.00,0.01}');
+});
+
+test('getDeckName with large numbers', () => {
+  expect(getDeckName(12345.6789, 99999.9999)).toBe('{12345.68,100000.00}');
+});
+
+test('getDeckName with mixed positive and negative', () => {
+  expect(getDeckName(-0.17, 0.02)).toBe('{-0.17,0.02}');
+});
+
+// ============================================================
+// requiredPlayers tests
+// ============================================================
+
+test('requiredPlayers returns 2 for War', () => {
+  expect(requiredPlayers('War')).toBe(2);
+});
+
+test('requiredPlayers returns 1 for Solitaire', () => {
+  expect(requiredPlayers('Solitaire')).toBe(1);
+});
+
+test('requiredPlayers returns 1 for Browse', () => {
+  expect(requiredPlayers('Browse')).toBe(1);
+});
+
+test('requiredPlayers returns 0 for unknown game', () => {
+  expect(requiredPlayers('Unknown')).toBe(0);
+});
+
+// ============================================================
+// getPlayerSeat tests (direct Redis setup)
+// ============================================================
+
+test('getPlayerSeat returns A for first player (slot 0)', async () => {
+  const redis = await createTestRedisClient();
+  const testTable = 'table:seat-test-1';
+  await redis.del(`${testTable}:players`);
+  await redis.zAdd(`${testTable}:players`, { score: 0, value: 'user1' });
+
+  expect(await getPlayerSeat(testTable, 'user1')).toBe('A');
+
+  await redis.del(`${testTable}:players`);
+  await redis.disconnect();
+});
+
+test('getPlayerSeat returns B for second player (slot 1)', async () => {
+  const redis = await createTestRedisClient();
+  const testTable = 'table:seat-test-2';
+  await redis.del(`${testTable}:players`);
+  await redis.zAdd(`${testTable}:players`, [
+    { score: 0, value: 'user1' },
+    { score: 1, value: 'user2' },
+  ]);
+
+  expect(await getPlayerSeat(testTable, 'user2')).toBe('B');
+
+  await redis.del(`${testTable}:players`);
+  await redis.disconnect();
+});
+
+test('getPlayerSeat returns undefined for unknown player', async () => {
+  const redis = await createTestRedisClient();
+  const testTable = 'table:seat-test-3';
+  await redis.del(`${testTable}:players`);
+  await redis.zAdd(`${testTable}:players`, { score: 0, value: 'user1' });
+
+  expect(await getPlayerSeat(testTable, 'unknown-user')).toBe('undefined');
+
+  await redis.del(`${testTable}:players`);
+  await redis.disconnect();
 });
