@@ -27,20 +27,26 @@ cat > "$RIG_ROOT/.runtime/setup-hooks/01-ensure-node-modules.sh" << 'EOF'
 #!/bin/bash
 # Ensure node_modules is available for polecat worktrees.
 # Uses flock to serialize npm ci across concurrent polecat spawns.
-# Always runs npm ci in mayor/rig to ensure dependencies are current,
-# then copies to the polecat worktree.
+# Only runs npm ci if package-lock.json changed since last install.
 
-SOURCE="$(dirname "$(dirname "$0")")/../mayor/rig"
-LOCKFILE="$(dirname "$(dirname "$0")")/npm-install.lock"
+SOURCE="$GT_RIG_PATH/mayor/rig"
+LOCKFILE="$GT_RIG_PATH/.runtime/npm-install.lock"
+HASHFILE="$GT_RIG_PATH/.runtime/npm-install.hash"
 
-# Acquire exclusive lock, run npm ci, release lock
 (
     flock -x 200
-    cd "$SOURCE" && npm ci --silent
+
+    CURRENT_HASH=$(md5sum "$SOURCE/package-lock.json" | cut -d' ' -f1)
+    STORED_HASH=$(cat "$HASHFILE" 2>/dev/null || echo "")
+
+    if [ "$CURRENT_HASH" != "$STORED_HASH" ] || [ ! -d "$SOURCE/node_modules" ]; then
+        cd "$SOURCE" && npm ci --silent
+        echo "$CURRENT_HASH" > "$HASHFILE"
+    fi
 ) 200>"$LOCKFILE"
 
-# Copy to polecat worktree
-cp -r "$SOURCE/node_modules" "$GT_WORKTREE_PATH/"
+# Sync to polecat worktree (incremental, removes stale packages)
+rsync -a --delete "$SOURCE/node_modules/" "$GT_WORKTREE_PATH/node_modules/"
 EOF
 
 chmod +x "$RIG_ROOT/.runtime/setup-hooks/01-ensure-node-modules.sh"
