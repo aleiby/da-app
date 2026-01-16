@@ -255,3 +255,14 @@ bd edit <id> --description
 ```
 
 `bd update` supports all common fields inline: `--title`, `--description`, `--status`, `--priority`, `--assignee`, `--notes`, `--design`, `--acceptance`.
+
+## Gas Town Rig Setup
+
+When setting up a new Gas Town rig for this project, run the rig hooks setup script:
+
+```bash
+./scripts/setup-rig-hooks.sh
+```
+
+This creates setup hooks that optimize polecat spawning:
+- **01-ensure-node-modules.sh**: Serializes `npm ci` across concurrent polecat spawns to prevent memory exhaustion, then copies node_modules to each polecat worktree.
