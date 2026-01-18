@@ -1,4 +1,1 @@
-repos:
-  primary: "."
-  additional:
-    - "/home/aleiby/gt/da/mayor/rig"
+issue-prefix: "da"
