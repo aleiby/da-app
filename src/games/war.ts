@@ -1,10 +1,12 @@
 import { CardGame, ClickDeckArgs } from '../cardgame';
-import { Card, initDeck, getShuffledDeck, getDeckCards, getCard } from '../cards';
+import { Card, initDeck, getShuffledDeck, getDeckCards, getCard, DeckContents } from '../cards';
 import { broadcastMsg, revealCard } from '../cardtable';
 import { allCards, minorCards, totalMinor } from '../tarot';
 import { getUserName } from '../connection';
 import { sleep } from '../utils';
 import { strict as assert } from 'assert';
+
+const WAR_DECK_SIZE = 20;
 
 export class War extends CardGame {
   static get requiredPlayers() {
@@ -119,8 +121,8 @@ export class War extends CardGame {
     });
 
     if (initialSetup) {
-      deckA.add(await getShuffledDeck(playerA));
-      deckB.add(await getShuffledDeck(playerB));
+      deckA.add(await getShuffledDeck(playerA, DeckContents.AllCards, WAR_DECK_SIZE));
+      deckB.add(await getShuffledDeck(playerB, DeckContents.AllCards, WAR_DECK_SIZE));
     }
 
     console.log('GO');

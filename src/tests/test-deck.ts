@@ -155,3 +155,32 @@ test('getShuffledDeck with limit works for MajorOnly deck', async () => {
   const cards = await getShuffledDeck('tz1TestWallet', DeckContents.MajorOnly, 5);
   expect(cards.length).toBe(5);
 });
+
+// ============================================================
+// War game deck size tests
+// ============================================================
+
+test('War game deck size: each player gets exactly 20 cards', async () => {
+  // Verify getShuffledDeck with limit=20 returns exactly 20 cards
+  // This tests the same configuration used by the War game's WAR_DECK_SIZE constant
+  const playerACards = await getShuffledDeck('tz1TestPlayerA', DeckContents.AllCards, 20);
+  const playerBCards = await getShuffledDeck('tz1TestPlayerB', DeckContents.AllCards, 20);
+
+  expect(playerACards.length).toBe(20);
+  expect(playerBCards.length).toBe(20);
+});
+
+test('War game deck: cards are randomly selected from full tarot deck', async () => {
+  // Get two decks with same parameters
+  const deck1 = await getShuffledDeck('tz1TestPlayerA', DeckContents.AllCards, 20);
+  const deck2 = await getShuffledDeck('tz1TestPlayerB', DeckContents.AllCards, 20);
+
+  // Cards should be different between players (shuffled randomly)
+  const values1 = deck1.map((c) => c.value).sort((a, b) => a - b);
+  const values2 = deck2.map((c) => c.value).sort((a, b) => a - b);
+
+  // It's extremely unlikely (but not impossible) that two random 20-card selections
+  // from a 78-card deck would be identical. If they're the same, the shuffle isn't working.
+  const areIdentical = values1.every((v, i) => v === values2[i]);
+  expect(areIdentical).toBe(false);
+});
