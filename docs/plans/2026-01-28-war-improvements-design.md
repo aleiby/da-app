@@ -41,6 +41,8 @@ deckB.add(await getShuffledDeck(playerB, DeckContents.AllCards, WAR_DECK_SIZE));
 
 A background worker that fetches IPFS metadata and caches lot information in Redis.
 
+**Deployment:** Runs as a worker loop within the main server process (started via `setInterval` or async loop on server startup). Can be extracted to separate process later if needed - the Redis-based queue design supports either model.
+
 #### Redis Structure
 ```
 metadata:queue:0     # Urgent - games blocked waiting
@@ -132,7 +134,7 @@ async function fetchLotFromIPFS(ipfsUri: string): Promise<string> {
 
 ---
 
-### Task 3: Rarity Tiebreaker
+### Task 3: Rarity Tiebreaker & Traditional War
 **File:** `src/games/war.ts`
 
 #### Lot Priority (from Unity client)
@@ -149,7 +151,7 @@ function getLotPriority(lot: string): number {
 }
 ```
 
-#### Updated Comparison Logic
+#### Card Comparison Helper
 ```typescript
 const getValue = (card: Card) => {
   const faceValue = card.value < totalMinor
@@ -158,47 +160,156 @@ const getValue = (card: Card) => {
   return faceValue;
 };
 
-// In round resolution:
-const valueA = getValue(cardA);
-const valueB = getValue(cardB);
+// Returns: 1 if A wins, -1 if B wins, 0 if true tie
+async function compareCards(cardA: Card, cardB: Card): Promise<number> {
+  const valueA = getValue(cardA);
+  const valueB = getValue(cardB);
 
-if (valueA > valueB) {
-  // A wins on face value
-  wonA.moveAllFrom([playedA, playedB]);
-  broadcastMsg(tableId, `${nameA} wins round`);
-} else if (valueB > valueA) {
-  // B wins on face value
-  wonB.moveAllFrom([playedA, playedB]);
-  broadcastMsg(tableId, `${nameB} wins round`);
-} else {
-  // Tie - compare rarity
-  const lotA = await metadataService.getLotIfCached(cardA.id)
-            ?? await metadataService.requireLot(cardA.id);
-  const lotB = await metadataService.getLotIfCached(cardB.id)
-            ?? await metadataService.requireLot(cardB.id);
+  if (valueA > valueB) return 1;
+  if (valueB > valueA) return -1;
+
+  // Face tie - compare rarity
+  const lotA = await metadataService.requireLot(cardA.id);
+  const lotB = await metadataService.requireLot(cardB.id);
 
   const rarityA = getLotPriority(lotA);
   const rarityB = getLotPriority(lotB);
 
-  if (rarityA > rarityB) {
-    wonA.moveAllFrom([playedA, playedB]);
-    broadcastMsg(tableId, `${nameA} wins round (rarer card!)`);
-  } else if (rarityB > rarityA) {
-    wonB.moveAllFrom([playedA, playedB]);
-    broadcastMsg(tableId, `${nameB} wins round (rarer card!)`);
-  } else {
-    // True tie - cards stay in play for next round
-    broadcastMsg(tableId, "It's a tie! Cards stay in play.");
+  if (rarityA > rarityB) return 1;
+  if (rarityB > rarityA) return -1;
+
+  return 0;  // True tie
+}
+```
+
+#### Traditional War Mechanics
+When both face value and rarity tie, trigger "War":
+
+```typescript
+async function resolveWar(
+  deckA: CardDeck, deckB: CardDeck,
+  playedA: CardDeck, playedB: CardDeck,
+  wonA: CardDeck, wonB: CardDeck,
+  playerA: string, playerB: string,
+  tableId: string
+): Promise<void> {
+  broadcastMsg(tableId, "WAR!");
+
+  // Each player places up to 3 cards face-down, then 1 face-up
+  // If fewer than 4 cards available, last card is the face-up
+  const warCardsA = await drawWarCards(deckA, wonA, playedA, playerA, tableId);
+  const warCardsB = await drawWarCards(deckB, wonB, playedB, playerB, tableId);
+
+  // Check if either player ran out during war
+  if (!warCardsA.faceUp) {
+    const name = await getUserName(playerB);
+    broadcastMsg(tableId, `${playerA} has no cards for war! ${name} wins!`);
+    await endGame(playerB);
+    return;
   }
+  if (!warCardsB.faceUp) {
+    const name = await getUserName(playerA);
+    broadcastMsg(tableId, `${playerB} has no cards for war! ${name} wins!`);
+    await endGame(playerA);
+    return;
+  }
+
+  // Reveal face-up cards
+  revealCard(tableId, warCardsA.faceUp);
+  revealCard(tableId, warCardsB.faceUp);
+
+  const nameA = await getUserName(playerA);
+  const nameB = await getUserName(playerB);
+  broadcastMsg(tableId, `${nameA} reveals ${cards[warCardsA.faceUp.value]}`);
+  broadcastMsg(tableId, `${nameB} reveals ${cards[warCardsB.faceUp.value]}`);
+
+  await sleep(1000);
+
+  const result = await compareCards(warCardsA.faceUp, warCardsB.faceUp);
+
+  if (result > 0) {
+    wonA.moveAllFrom([playedA, playedB]);
+    broadcastMsg(tableId, `${nameA} wins the war!`);
+  } else if (result < 0) {
+    wonB.moveAllFrom([playedA, playedB]);
+    broadcastMsg(tableId, `${nameB} wins the war!`);
+  } else {
+    // Another tie - recursive war!
+    broadcastMsg(tableId, "Another tie!");
+    await resolveWar(deckA, deckB, playedA, playedB, wonA, wonB, playerA, playerB, tableId);
+  }
+}
+
+async function drawWarCards(
+  deck: CardDeck,
+  won: CardDeck,
+  played: CardDeck,
+  player: string,
+  tableId: string
+): Promise<{ faceDown: Card[], faceUp: Card | null }> {
+  const faceDown: Card[] = [];
+  let faceUp: Card | null = null;
+
+  for (let i = 0; i < 4; i++) {
+    // Ensure we can draw (reshuffle if needed)
+    if (!await ensureCanDraw(deck, won, player, tableId)) {
+      // Out of cards entirely - return what we have
+      // Last drawn card becomes face-up if we have any
+      if (faceDown.length > 0) {
+        faceUp = faceDown.pop()!;
+      }
+      return { faceDown, faceUp };
+    }
+
+    const card = await deck.drawCard(played);
+    if (!card) break;
+
+    if (i < 3) {
+      faceDown.push(card);
+      // Face-down cards stay hidden
+    } else {
+      faceUp = card;
+    }
+  }
+
+  // Edge case: had exactly 1-3 cards, last one is face-up
+  if (!faceUp && faceDown.length > 0) {
+    faceUp = faceDown.pop()!;
+  }
+
+  return { faceDown, faceUp };
+}
+```
+
+#### Updated Round Resolution
+```typescript
+// In round resolution after both cards played:
+const result = await compareCards(cardA, cardB);
+
+if (result > 0) {
+  wonA.moveAllFrom([playedA, playedB]);
+  const name = await getUserName(playerA);
+  broadcastMsg(tableId, `${name} wins round`);
+} else if (result < 0) {
+  wonB.moveAllFrom([playedA, playedB]);
+  const name = await getUserName(playerB);
+  broadcastMsg(tableId, `${name} wins round`);
+} else {
+  // True tie - trigger traditional War
+  await resolveWar(deckA, deckB, playedA, playedB, wonA, wonB, playerA, playerB, tableId);
 }
 ```
 
 **Tests:**
 - Higher face value wins regardless of rarity
 - Equal face value: higher lot priority wins
-- Equal face value, equal lot: true tie (cards stay)
-- Loaner cards (no lot) lose to any NFT in ties
-- Both loaners with same face value: true tie
+- Equal face value, equal lot: triggers War
+- War: 3 face-down + 1 face-up from each player
+- War with < 4 cards: last card is face-up
+- War with 0 cards: player loses immediately
+- Recursive war on repeated ties
+- Loaner cards (no lot) lose to any NFT in rarity comparison
+- All war cards go to winner's won pile
 
 ---
 
@@ -357,49 +468,63 @@ if (initialSetup) {
 ## Test File Structure
 
 ### New: `src/tests/test-metadata-service.ts`
-- Queue priority ordering
-- Worker rate limiting
-- IPFS fetch mocking
-- Cache behavior
-- Pub/sub notifications
+- Queue priority ordering (urgent before active game before registered)
+- Worker rate limiting (~500ms between fetches)
+- IPFS fetch mocking (success, failure, retry)
+- Cache behavior (skip already-cached cards)
+- Pub/sub notifications (`metadata:ready:{cardId}`)
+- `requireLot()` blocks until available
+- `getLotIfCached()` returns null if not cached
 
 ### Updated: `src/tests/games/test-war.ts`
-- Deck size verification
-- Rarity tiebreaker scenarios
-- Game over detection
-- Won pile reshuffle
-- Reconnection state restoration
-- Metadata prefetch integration
+- Deck size verification (20 cards each)
+- Face value comparison (higher wins)
+- Rarity tiebreaker (higher lot priority wins)
+- Traditional War mechanics:
+  - War triggers on true tie (same face, same lot)
+  - Each player puts 3 down, 1 up
+  - Player with < 4 cards uses last card as face-up
+  - Player with 0 cards loses immediately
+  - Recursive war on repeated ties
+  - All cards go to winner
+- Game over detection (empty deck + empty won pile)
+- Won pile reshuffle (deck empty, won pile has cards)
+- Reconnection state restoration (mid-round, between rounds)
+- Metadata prefetch on game start (40 cards queued)
 
 ### Updated: `src/tests/test-cards.ts`
 - `CardDeck.shuffleInto()` method
+  - Cards are randomized
+  - Source deck is emptied
+  - Destination deck receives all cards
 
 ---
 
 ## Dependencies
 
 ```
-Task 1 (Deck Size)         - Independent
-Task 2 (Metadata Service)  - Independent
-Task 3 (Rarity Tiebreaker) - Depends on Task 2
-Task 4 (Game Over)         - Independent (but uses Task 2 for re-prioritization)
-Task 5 (Reconnection)      - Independent
-Task 6 (Prefetch)          - Depends on Task 2
+Task 1 (Deck Size)              - Independent
+Task 2 (Metadata Service)       - Independent
+Task 3 (Rarity & War Mechanics) - Depends on Task 2, Task 4
+Task 4 (Game Over/Reshuffle)    - Independent
+Task 5 (Reconnection)           - Independent
+Task 6 (Prefetch)               - Depends on Task 2
 ```
 
-Parallelization: Tasks 1, 2, 4, 5 can run in parallel. Tasks 3 and 6 wait for Task 2.
+**Execution order:**
+1. **Phase 1** (parallel): Tasks 1, 2, 4, 5
+2. **Phase 2** (parallel, after Phase 1): Tasks 3, 6
+
+Task 3 depends on Task 4 because `resolveWar()` calls `ensureCanDraw()` during war card drawing.
 
 ---
 
-## Open Questions
+## Design Decisions
 
-1. **Tie mechanics**: Current design leaves cards in play on true ties. Should we implement traditional "War" (3 down, 1 up)?
+1. **Tie mechanics**: Traditional War (3 down, 1 up). If player has fewer than 4 cards, their last card is the face-up.
 
-2. **Metadata service deployment**: Run as separate process, or integrate into main server with worker thread?
+2. **Metadata service deployment**: Worker thread in main server (Option B). Simpler ops, sufficient for current scale. Redis-based queue supports extraction to separate process later if needed.
 
-3. **Fallback behavior**: If metadata service is unavailable, should we:
-   - Block the game until available
-   - Fall back to token_id comparison with warning
-   - Treat all ties as true ties
+3. **Fallback behavior**: Block the game until metadata available. Consider persistent caching mechanisms for future games.
 
-4. **Escrow/rewards**: `endGame()` has a TODO for handling stakes. Out of scope for this design?
+4. **Escrow/rewards**: Deferred. Out of scope for this design.
