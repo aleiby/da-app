@@ -104,6 +104,7 @@ export class TestClient {
       'msg',
       'setTable',
       'initDeck',
+      'addCards',
       'resumeGame',
       'revealCards',
       'userName',
@@ -326,6 +327,44 @@ export class TestClient {
   async waitForRevealCards(timeout: number = DEFAULT_TIMEOUT): Promise<unknown[]> {
     const args = await this.waitForEvent('revealCards', timeout);
     return args[0] as unknown[];
+  }
+
+  /**
+   * Wait for 'addCards' event (cards added to a deck after shuffling)
+   */
+  async waitForAddCards(timeout: number = DEFAULT_TIMEOUT): Promise<{
+    deckKey: string;
+    cardIds: number[];
+    toStart: boolean;
+  }> {
+    const args = await this.waitForEvent('addCards', timeout);
+    return {
+      deckKey: args[0] as string,
+      cardIds: args[1] as number[],
+      toStart: args[2] as boolean,
+    };
+  }
+
+  /**
+   * Wait for addCards events for a specific deck
+   */
+  async waitForDeckReady(deckName: string, timeout: number = DEFAULT_TIMEOUT): Promise<void> {
+    const startTime = Date.now();
+
+    while (Date.now() - startTime < timeout) {
+      try {
+        const { deckKey } = await this.waitForAddCards(
+          Math.min(500, timeout - (Date.now() - startTime))
+        );
+        if (deckKey.includes(deckName)) {
+          return;
+        }
+      } catch {
+        // Timeout on individual wait, continue checking
+      }
+    }
+
+    throw new Error(`Timeout waiting for deck ${deckName} to be ready`);
   }
 
   /**
