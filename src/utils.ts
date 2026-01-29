@@ -43,4 +43,13 @@ export const shuffle = (list: number[]) => {
   }
 };
 
+export const shuffleStrings = (list: string[]) => {
+  const count = list.length;
+  const last = count - 1;
+  for (let i = 0; i < last; ++i) {
+    const n = randomRange(i, last);
+    [list[i], list[n]] = [list[n], list[i]];
+  }
+};
+
 export const notNull = <T>(x: T | null): x is T => x !== null;

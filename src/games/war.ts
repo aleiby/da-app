@@ -1,14 +1,16 @@
 import { CardGame, ClickDeckArgs } from '../cardgame';
-import { Card, initDeck, getShuffledDeck, getDeckCards, getCard, DeckContents } from '../cards';
+import { Card, CardDeck, initDeck, getShuffledDeck, getDeckCards, getCard, DeckContents } from '../cards';
 import { broadcastMsg, revealCard } from '../cardtable';
 import { allCards, minorCards, totalMinor } from '../tarot';
-import { getUserName } from '../connection';
+import { getUserName, sendEvent } from '../connection';
 import { sleep } from '../utils';
 import { strict as assert } from 'assert';
 
 const WAR_DECK_SIZE = 20;
 
 export class War extends CardGame {
+  private _gameEnded = false;
+
   static get requiredPlayers() {
     return 2;
   }
@@ -20,6 +22,52 @@ export class War extends CardGame {
   }
   getMaxPlayers() {
     return War.requiredPlayers;
+  }
+
+  /**
+   * End the game with the given winner.
+   * Cleans up Redis subscriptions and broadcasts gameOver event.
+   */
+  async endGame(winner: string) {
+    if (this._gameEnded) {
+      return;
+    }
+    this._gameEnded = true;
+
+    const winnerName = await getUserName(winner);
+    broadcastMsg(this.tableId, `Game Over! ${winnerName} wins!`);
+    sendEvent(this.tableId, 'gameOver', winner);
+
+    // Clean up Redis subscriptions
+    await this.sub.unsubscribe();
+    await this.sub.disconnect();
+  }
+
+  /**
+   * Ensure a player can draw a card.
+   * If deck is empty, reshuffles won pile into deck.
+   * Returns true if player can draw, false if game over (both piles empty).
+   */
+  async ensureCanDraw(deck: CardDeck, won: CardDeck, player: string): Promise<boolean> {
+    // Check if deck has cards
+    const deckCount = await deck.numCards();
+    if (deckCount > 0) {
+      return true;
+    }
+
+    // Deck empty - check won pile
+    const wonCount = await won.numCards();
+    if (wonCount === 0) {
+      // Game over - player has no cards left
+      return false;
+    }
+
+    // Reshuffle won pile into deck
+    const playerName = await getUserName(player);
+    broadcastMsg(this.tableId, `${playerName} reshuffles their won pile`);
+    await won.shuffleInto(deck);
+
+    return true;
   }
 
   async begin(initialSetup: boolean) {
@@ -116,7 +164,23 @@ export class War extends CardGame {
         }
         cardA = cardB = null;
 
-        // TODO: Handle game over state.
+        // Check if either player can draw for next round
+        const [canDrawA, canDrawB] = await Promise.all([
+          this.ensureCanDraw(deckA, wonA, playerA),
+          this.ensureCanDraw(deckB, wonB, playerB),
+        ]);
+
+        if (!canDrawA && !canDrawB) {
+          // Both players out of cards - shouldn't happen normally, but handle gracefully
+          broadcastMsg(this.tableId, 'Game ended in a draw - both players ran out of cards!');
+          sendEvent(this.tableId, 'gameOver', null);
+          await this.sub.unsubscribe();
+          await this.sub.disconnect();
+        } else if (!canDrawA) {
+          await this.endGame(playerB);
+        } else if (!canDrawB) {
+          await this.endGame(playerA);
+        }
       }
     });
 

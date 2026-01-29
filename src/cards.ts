@@ -1,6 +1,6 @@
 import { strict as assert } from 'assert';
 import { totalCards, totalMinor, majorArcana } from './tarot';
-import { shuffle } from './utils';
+import { shuffle, shuffleStrings } from './utils';
 import { redis } from './redis';
 import { sendEvent } from './connection';
 
@@ -196,6 +196,25 @@ export class CardDeck {
   }
   moveAllFrom(decks: CardDeck[], toStart = false) {
     decks.forEach((deck) => deck.moveAll(this, toStart));
+  }
+
+  /**
+   * Shuffle all cards from this deck into the destination deck.
+   * Clears this deck and adds cards to destination in shuffled order.
+   */
+  async shuffleInto(to: CardDeck, toStart = false) {
+    const idStrings = await redis.zRange(this.key, 0, -1);
+    if (idStrings.length === 0) {
+      return;
+    }
+    shuffleStrings(idStrings);
+    // Clear source deck
+    await redis.del(this.key);
+    await redis.del(this._facingKey);
+    // Add to destination in shuffled order
+    to._addIds(idStrings, toStart);
+    const ids = idStrings.map(Number);
+    sendEvent(this.tableId, 'moveCards', to.key, ids, toStart);
   }
 
   async peekId() {

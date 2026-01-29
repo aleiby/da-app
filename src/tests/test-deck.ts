@@ -184,3 +184,71 @@ test('War game deck: cards are randomly selected from full tarot deck', async ()
   const areIdentical = values1.every((v, i) => v === values2[i]);
   expect(areIdentical).toBe(false);
 });
+
+// ============================================================
+// shuffleInto tests
+// ============================================================
+
+test('shuffleInto moves all cards from source to destination', async () => {
+  const [deckA, deckB] = await Promise.all([
+    initDeck(tableId, 'shuffle-source'),
+    initDeck(tableId, 'shuffle-dest'),
+  ]);
+  const cards = await registerCards([1, 2, 3, 4, 5]);
+  deckA.add(cards);
+
+  expect(await deckA.numCards()).toBe(5);
+  expect(await deckB.numCards()).toBe(0);
+
+  await deckA.shuffleInto(deckB);
+
+  expect(await deckA.numCards()).toBe(0);
+  expect(await deckB.numCards()).toBe(5);
+});
+
+test('shuffleInto clears source deck', async () => {
+  const [deckA, deckB] = await Promise.all([
+    initDeck(tableId, 'shuffle-clear-source'),
+    initDeck(tableId, 'shuffle-clear-dest'),
+  ]);
+  const cards = await registerCards([1, 2, 3]);
+  deckA.add(cards);
+
+  await deckA.shuffleInto(deckB);
+
+  // Source should be empty
+  const drawnFromSource = await deckA.drawCard(deckA);
+  expect(drawnFromSource).toBeNull();
+});
+
+test('shuffleInto does nothing when source is empty', async () => {
+  const [deckA, deckB] = await Promise.all([
+    initDeck(tableId, 'shuffle-empty-source'),
+    initDeck(tableId, 'shuffle-empty-dest'),
+  ]);
+
+  // Add some cards to destination
+  const cards = await registerCards([1, 2]);
+  deckB.add(cards);
+
+  await deckA.shuffleInto(deckB);
+
+  expect(await deckA.numCards()).toBe(0);
+  expect(await deckB.numCards()).toBe(2);
+});
+
+test('shuffleInto appends to existing cards in destination', async () => {
+  const [deckA, deckB] = await Promise.all([
+    initDeck(tableId, 'shuffle-append-source'),
+    initDeck(tableId, 'shuffle-append-dest'),
+  ]);
+  const sourceCards = await registerCards([4, 5, 6]);
+  const destCards = await registerCards([1, 2, 3]);
+
+  deckA.add(sourceCards);
+  deckB.add(destCards);
+
+  await deckA.shuffleInto(deckB);
+
+  expect(await deckB.numCards()).toBe(6);
+});

@@ -110,6 +110,8 @@ export class TestClient {
       'isDevelopment',
       'packOpened',
       'nameChanged',
+      'gameOver',
+      'moveCards',
     ];
 
     eventsToTrack.forEach((eventName) => {
