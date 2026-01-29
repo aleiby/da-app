@@ -36,3 +36,8 @@ test-results/
 
 # Gas Town runtime
 .runtime/
+
+# Gas Town (added by gt)
+.claude/
+.beads/
+.logs/
