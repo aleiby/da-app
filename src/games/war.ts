@@ -5,8 +5,67 @@ import { allCards, minorCards, totalMinor } from '../tarot';
 import { getUserName, sendEvent } from '../connection';
 import { sleep } from '../utils';
 import { strict as assert } from 'assert';
+import * as metadataService from '../metadata-service';
 
 const WAR_DECK_SIZE = 20;
+
+/**
+ * Lot priority mapping (from Unity client).
+ * Higher number = rarer = wins ties.
+ */
+const LOT_PRIORITY: Record<string, number> = {
+  spdp: 4, // Rarest
+  eifd: 3,
+  lnuy: 2,
+  hrgl: 1, // Common
+};
+
+/**
+ * Get the priority value for a lot.
+ * Unknown lots and loaner cards (empty lot) have priority 0.
+ */
+function getLotPriority(lot: string): number {
+  return LOT_PRIORITY[lot] || 0;
+}
+
+/**
+ * Get the face value of a card for comparison.
+ * Minor arcana use face value (0-13), major arcana use their full value (56-77).
+ * Major arcana beat minor arcana due to higher values.
+ */
+function getValue(card: Card): number {
+  if (card.value < totalMinor) {
+    return card.value % minorCards.length;
+  }
+  return card.value;
+}
+
+/**
+ * Compare two cards.
+ * First compares face values, then rarity (lot priority) on ties.
+ * @returns 1 if cardA wins, -1 if cardB wins, 0 if true tie
+ */
+async function compareCards(cardA: Card, cardB: Card): Promise<number> {
+  const valueA = getValue(cardA);
+  const valueB = getValue(cardB);
+
+  if (valueA > valueB) return 1;
+  if (valueB > valueA) return -1;
+
+  // Face tie - compare rarity
+  const [lotA, lotB] = await Promise.all([
+    metadataService.requireLot(cardA.id),
+    metadataService.requireLot(cardB.id),
+  ]);
+
+  const rarityA = getLotPriority(lotA);
+  const rarityB = getLotPriority(lotB);
+
+  if (rarityA > rarityB) return 1;
+  if (rarityB > rarityA) return -1;
+
+  return 0; // True tie
+}
 
 export class War extends CardGame {
   private _gameEnded = false;
@@ -106,13 +165,108 @@ export class War extends CardGame {
 
     const cards = allCards();
 
-    // Use face value (ignore suit) unless major arcana (which beats minor)
-    // TODO: Check rarity first?
-    const getValue = (card: Card) => {
-      if (card.value < totalMinor) {
-        return card.value % minorCards.length;
+    /**
+     * Draw war cards for a player (up to 4: 3 face-down, 1 face-up).
+     * If player has fewer than 4 cards, last card is face-up.
+     * If player has 0 cards, returns null for faceUp (player loses war).
+     */
+    const drawWarCards = async (
+      deck: CardDeck,
+      won: CardDeck,
+      played: CardDeck,
+      player: string
+    ): Promise<{ faceDown: Card[]; faceUp: Card | null }> => {
+      const faceDown: Card[] = [];
+      let faceUp: Card | null = null;
+
+      for (let i = 0; i < 4; i++) {
+        // Ensure we can draw (reshuffle if needed)
+        if (!(await this.ensureCanDraw(deck, won, player))) {
+          // Out of cards entirely - return what we have
+          // Last drawn card becomes face-up if we have any
+          if (faceDown.length > 0) {
+            faceUp = faceDown.pop()!;
+          }
+          return { faceDown, faceUp };
+        }
+
+        const card = await deck.drawCard(played);
+        if (!card) break;
+
+        if (i < 3) {
+          faceDown.push(card);
+          // Face-down cards stay hidden
+        } else {
+          faceUp = card;
+        }
       }
-      return card.value;
+
+      // Edge case: had exactly 1-3 cards, last one is face-up
+      if (!faceUp && faceDown.length > 0) {
+        faceUp = faceDown.pop()!;
+      }
+
+      return { faceDown, faceUp };
+    };
+
+    /**
+     * Resolve a War (tie).
+     * Each player places up to 3 cards face-down, then 1 face-up.
+     * Winner takes all cards from both played piles.
+     * Recursive on repeated ties.
+     */
+    const resolveWar = async (): Promise<void> => {
+      broadcastMsg(this.tableId, 'WAR!');
+      await sleep(500);
+
+      // Each player places up to 3 cards face-down, then 1 face-up
+      const warCardsA = await drawWarCards(deckA, wonA, playedA, playerA);
+      const warCardsB = await drawWarCards(deckB, wonB, playedB, playerB);
+
+      // Check if either player ran out during war
+      if (!warCardsA.faceUp) {
+        const [loserName, winnerName] = await Promise.all([
+          getUserName(playerA),
+          getUserName(playerB),
+        ]);
+        broadcastMsg(this.tableId, `${loserName} has no cards for war! ${winnerName} wins!`);
+        await this.endGame(playerB);
+        return;
+      }
+      if (!warCardsB.faceUp) {
+        const [winnerName, loserName] = await Promise.all([
+          getUserName(playerA),
+          getUserName(playerB),
+        ]);
+        broadcastMsg(this.tableId, `${loserName} has no cards for war! ${winnerName} wins!`);
+        await this.endGame(playerA);
+        return;
+      }
+
+      // Reveal face-up cards
+      revealCard(this.tableId, warCardsA.faceUp);
+      revealCard(this.tableId, warCardsB.faceUp);
+
+      const nameA = await getUserName(playerA);
+      const nameB = await getUserName(playerB);
+      broadcastMsg(this.tableId, `${nameA} reveals ${cards[warCardsA.faceUp.value]}`);
+      broadcastMsg(this.tableId, `${nameB} reveals ${cards[warCardsB.faceUp.value]}`);
+
+      await sleep(1000);
+
+      const result = await compareCards(warCardsA.faceUp, warCardsB.faceUp);
+
+      if (result > 0) {
+        wonA.moveAllFrom([playedA, playedB]);
+        broadcastMsg(this.tableId, `${nameA} wins the war!`);
+      } else if (result < 0) {
+        wonB.moveAllFrom([playedA, playedB]);
+        broadcastMsg(this.tableId, `${nameB} wins the war!`);
+      } else {
+        // Another tie - recursive war!
+        broadcastMsg(this.tableId, 'Another tie!');
+        await resolveWar();
+      }
     };
 
     // Hook up client commands
@@ -149,18 +303,24 @@ export class War extends CardGame {
       // Once both selected
       if (cardA && cardB) {
         await sleep(1000);
-        const valueA = getValue(cardA);
-        const valueB = getValue(cardB);
-        if (valueA > valueB) {
+        const result = await compareCards(cardA, cardB);
+
+        if (result > 0) {
           wonA.moveAllFrom([playedA, playedB]);
           const name = await getUserName(playerA);
           broadcastMsg(this.tableId, `${name} wins round`);
-        } else if (valueB > valueA) {
+        } else if (result < 0) {
           wonB.moveAllFrom([playedA, playedB]);
           const name = await getUserName(playerB);
           broadcastMsg(this.tableId, `${name} wins round`);
         } else {
-          broadcastMsg(this.tableId, "It's a tie!");
+          // True tie (same face value and same rarity) - trigger traditional War
+          await resolveWar();
+          // If game ended during war, don't continue with post-round checks
+          if (this._gameEnded) {
+            cardA = cardB = null;
+            return;
+          }
         }
         cardA = cardB = null;
 
