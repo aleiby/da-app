@@ -4,6 +4,7 @@ import { broadcastMsg, revealCard } from '../cardtable';
 import { allCards, minorCards, totalMinor } from '../tarot';
 import { getUserName, sendEvent } from '../connection';
 import { sleep } from '../utils';
+import { prioritize, Queue } from '../metadata-service';
 import { strict as assert } from 'assert';
 
 const WAR_DECK_SIZE = 20;
@@ -185,8 +186,19 @@ export class War extends CardGame {
     });
 
     if (initialSetup) {
-      deckA.add(await getShuffledDeck(playerA, DeckContents.AllCards, WAR_DECK_SIZE));
-      deckB.add(await getShuffledDeck(playerB, DeckContents.AllCards, WAR_DECK_SIZE));
+      const cardsA = await getShuffledDeck(playerA, DeckContents.AllCards, WAR_DECK_SIZE);
+      const cardsB = await getShuffledDeck(playerB, DeckContents.AllCards, WAR_DECK_SIZE);
+      deckA.add(cardsA);
+      deckB.add(cardsB);
+
+      // Prefetch metadata in draw order (interleaved since both players draw together)
+      const cardIds: number[] = [];
+      const maxLen = Math.max(cardsA.length, cardsB.length);
+      for (let i = 0; i < maxLen; i++) {
+        if (i < cardsA.length) cardIds.push(cardsA[i].id);
+        if (i < cardsB.length) cardIds.push(cardsB[i].id);
+      }
+      prioritize(cardIds, Queue.ActiveGame);
     }
 
     console.log('GO');
