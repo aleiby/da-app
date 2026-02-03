@@ -29,7 +29,7 @@ const CACHED_SET = 'metadata:cached';
 const INFLIGHT_HASH = 'metadata:inflight';
 const LOT_PREFIX = 'metadata:lot:';
 const NOTIFY_CHANNEL = 'metadata:ready';
-const RETRY_HASH = 'metadata:retries'; // Tracks retry count per card
+const RETRY_HASH = 'metadata:retries'; // Tracks retry state per card (JSON: {count, retryAfter})
 
 // Rate limiting: ~2 requests per second for Pinata
 const RATE_LIMIT_MS = 500;
@@ -318,6 +318,16 @@ async function workerLoop(): Promise<void> {
     return;
   }
 
+  // Check if this card is in retry backoff period
+  const retryStateStr = await redis.hGet(RETRY_HASH, cardIdStr);
+  if (retryStateStr) {
+    const retryState = JSON.parse(retryStateStr);
+    if (retryState.retryAfter && Date.now() < retryState.retryAfter) {
+      // Still in backoff period, skip for now
+      return;
+    }
+  }
+
   // Check if already inflight (and not stale)
   const inflight = await redis.hGet(INFLIGHT_HASH, cardIdStr);
   if (inflight !== null && !(await isInflightStale(cardId))) {
@@ -350,20 +360,29 @@ async function workerLoop(): Promise<void> {
     await redis.hDel(RETRY_HASH, cardIdStr);
   } else {
     // Transient error - check retry count and potentially re-queue
-    const retryCountStr = await redis.hGet(RETRY_HASH, cardIdStr);
-    const retryCount = retryCountStr ? Number(retryCountStr) : 0;
+    const currentRetryStateStr = await redis.hGet(RETRY_HASH, cardIdStr);
+    const currentRetryState = currentRetryStateStr
+      ? JSON.parse(currentRetryStateStr)
+      : { count: 0 };
+    const retryCount = currentRetryState.count;
 
     if (retryCount < MAX_RETRIES) {
       // Increment retry count and re-queue with exponential backoff
       const newRetryCount = retryCount + 1;
-      await redis.hSet(RETRY_HASH, cardIdStr, String(newRetryCount));
-
-      // Calculate delay: 5s, 10s, 20s (exponential backoff)
       const delayMs = RETRY_BASE_DELAY_MS * Math.pow(2, retryCount);
-      const retryScore = Date.now() + delayMs;
+      const retryAfter = Date.now() + delayMs;
 
-      // Re-queue to lowest priority queue (ColdCrawl) with delay score
-      await redis.zAdd(QUEUE_PREFIX + Queue.ColdCrawl, [{ score: retryScore, value: cardIdStr }]);
+      // Store retry state with count and delay timestamp
+      await redis.hSet(
+        RETRY_HASH,
+        cardIdStr,
+        JSON.stringify({ count: newRetryCount, retryAfter })
+      );
+
+      // Re-queue to lowest priority queue (ColdCrawl)
+      await redis.zAdd(QUEUE_PREFIX + Queue.ColdCrawl, [
+        { score: retryAfter, value: cardIdStr },
+      ]);
 
       console.warn(
         `Transient failure for card ${cardId}, retry ${newRetryCount}/${MAX_RETRIES} ` +
