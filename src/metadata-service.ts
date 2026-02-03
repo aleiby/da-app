@@ -29,14 +29,28 @@ const CACHED_SET = 'metadata:cached';
 const INFLIGHT_HASH = 'metadata:inflight';
 const LOT_PREFIX = 'metadata:lot:';
 const NOTIFY_CHANNEL = 'metadata:ready';
+const RETRY_HASH = 'metadata:retries'; // Tracks retry count per card
 
 // Rate limiting: ~2 requests per second for Pinata
 const RATE_LIMIT_MS = 500;
 const INFLIGHT_TIMEOUT_MS = 30000; // 30 seconds before considering a fetch stale
 const STALE_CLEANUP_INTERVAL_MS = 10000; // Check for stale inflight entries every 10 seconds
 
+// Retry configuration
+const MAX_RETRIES = 3;
+const RETRY_BASE_DELAY_MS = 5000; // 5 seconds, doubles each retry (exponential backoff)
+
 // IPFS gateway for fetching metadata
 const IPFS_GATEWAY = process.env.IPFS_GATEWAY || 'https://gateway.pinata.cloud/ipfs/';
+
+/**
+ * Result of a metadata fetch attempt
+ */
+const enum FetchResult {
+  Success = 'success',
+  TransientError = 'transient', // Network timeouts, 5xx - should retry
+  PermanentError = 'permanent', // 404, invalid data - should not retry
+}
 
 // Worker state
 let workerRunning = false;
@@ -184,9 +198,9 @@ export async function isCached(cardId: number): Promise<boolean> {
 
 /**
  * Fetch metadata from IPFS and cache the lot.
- * Returns true if successful, false otherwise.
+ * Returns FetchResult indicating success or error type.
  */
-async function fetchAndCacheMetadata(cardId: number, ipfsUri: string): Promise<boolean> {
+async function fetchAndCacheMetadata(cardId: number, ipfsUri: string): Promise<FetchResult> {
   const cardIdStr = String(cardId);
 
   // Mark as inflight
@@ -197,8 +211,14 @@ async function fetchAndCacheMetadata(cardId: number, ipfsUri: string): Promise<b
     const response = await fetch(url);
 
     if (!response.ok) {
-      console.error(`Failed to fetch metadata for card ${cardId}: ${response.status}`);
-      return false;
+      const status = response.status;
+      console.error(`Failed to fetch metadata for card ${cardId}: ${status}`);
+      // 4xx errors (except 408/429) are permanent - resource not found or invalid
+      // 5xx errors and 408/429 are transient - server issues or rate limiting
+      if (status >= 400 && status < 500 && status !== 408 && status !== 429) {
+        return FetchResult.PermanentError;
+      }
+      return FetchResult.TransientError;
     }
 
     const metadata: CardMetadata = await response.json();
@@ -210,10 +230,11 @@ async function fetchAndCacheMetadata(cardId: number, ipfsUri: string): Promise<b
     // Notify waiters
     await redis.publish(NOTIFY_CHANNEL, cardIdStr);
 
-    return true;
+    return FetchResult.Success;
   } catch (error) {
+    // Network errors, timeouts, JSON parse errors - treat as transient
     console.error(`Error fetching metadata for card ${cardId}:`, error);
-    return false;
+    return FetchResult.TransientError;
   } finally {
     // Remove from inflight
     await redis.hDel(INFLIGHT_HASH, cardIdStr);
@@ -276,6 +297,7 @@ async function cleanupStaleInflight(): Promise<void> {
 /**
  * Worker loop that processes the metadata queues.
  * Fetches one card at a time, respecting rate limits.
+ * Implements retry with exponential backoff for transient failures.
  */
 async function workerLoop(): Promise<void> {
   if (!workerRunning) return;
@@ -292,6 +314,7 @@ async function workerLoop(): Promise<void> {
   // Check if already cached (might have been cached while in queue)
   if (await redis.sIsMember(CACHED_SET, cardIdStr)) {
     await removeFromQueue(cardId, queue);
+    await redis.hDel(RETRY_HASH, cardIdStr); // Clean up any retry state
     return;
   }
 
@@ -308,18 +331,51 @@ async function workerLoop(): Promise<void> {
     // No IPFS URI, can't fetch - remove from queue
     console.warn(`Card ${cardId} has no ipfsUri, removing from queue`);
     await removeFromQueue(cardId, queue);
+    await redis.hDel(RETRY_HASH, cardIdStr);
     return;
   }
 
   // Fetch and cache
-  const success = await fetchAndCacheMetadata(cardId, cardData.ipfsUri);
+  const result = await fetchAndCacheMetadata(cardId, cardData.ipfsUri);
 
-  // Remove from queue regardless of success (avoid infinite loops)
+  // Remove from current queue position
   await removeFromQueue(cardId, queue);
 
-  if (!success) {
-    // Could re-queue with lower priority, but for now just log
-    console.error(`Failed to fetch metadata for card ${cardId}`);
+  if (result === FetchResult.Success) {
+    // Success - clean up retry state
+    await redis.hDel(RETRY_HASH, cardIdStr);
+  } else if (result === FetchResult.PermanentError) {
+    // Permanent failure (404, etc.) - don't retry
+    console.error(`Permanent failure fetching metadata for card ${cardId}, not retrying`);
+    await redis.hDel(RETRY_HASH, cardIdStr);
+  } else {
+    // Transient error - check retry count and potentially re-queue
+    const retryCountStr = await redis.hGet(RETRY_HASH, cardIdStr);
+    const retryCount = retryCountStr ? Number(retryCountStr) : 0;
+
+    if (retryCount < MAX_RETRIES) {
+      // Increment retry count and re-queue with exponential backoff
+      const newRetryCount = retryCount + 1;
+      await redis.hSet(RETRY_HASH, cardIdStr, String(newRetryCount));
+
+      // Calculate delay: 5s, 10s, 20s (exponential backoff)
+      const delayMs = RETRY_BASE_DELAY_MS * Math.pow(2, retryCount);
+      const retryScore = Date.now() + delayMs;
+
+      // Re-queue to lowest priority queue (ColdCrawl) with delay score
+      await redis.zAdd(QUEUE_PREFIX + Queue.ColdCrawl, [{ score: retryScore, value: cardIdStr }]);
+
+      console.warn(
+        `Transient failure for card ${cardId}, retry ${newRetryCount}/${MAX_RETRIES} ` +
+          `scheduled in ${delayMs}ms`
+      );
+    } else {
+      // Max retries exceeded - give up
+      console.error(
+        `Max retries (${MAX_RETRIES}) exceeded for card ${cardId}, giving up`
+      );
+      await redis.hDel(RETRY_HASH, cardIdStr);
+    }
   }
 }
 
@@ -385,15 +441,18 @@ export async function getQueueStats(): Promise<{
   coldCrawl: number;
   cached: number;
   inflight: number;
+  pendingRetries: number;
 }> {
-  const [urgent, activeGame, newlyRegistered, coldCrawl, cached, inflight] = await Promise.all([
-    redis.zCard(QUEUE_PREFIX + Queue.Urgent),
-    redis.zCard(QUEUE_PREFIX + Queue.ActiveGame),
-    redis.zCard(QUEUE_PREFIX + Queue.NewlyRegistered),
-    redis.zCard(QUEUE_PREFIX + Queue.ColdCrawl),
-    redis.sCard(CACHED_SET),
-    redis.hLen(INFLIGHT_HASH),
-  ]);
+  const [urgent, activeGame, newlyRegistered, coldCrawl, cached, inflight, pendingRetries] =
+    await Promise.all([
+      redis.zCard(QUEUE_PREFIX + Queue.Urgent),
+      redis.zCard(QUEUE_PREFIX + Queue.ActiveGame),
+      redis.zCard(QUEUE_PREFIX + Queue.NewlyRegistered),
+      redis.zCard(QUEUE_PREFIX + Queue.ColdCrawl),
+      redis.sCard(CACHED_SET),
+      redis.hLen(INFLIGHT_HASH),
+      redis.hLen(RETRY_HASH),
+    ]);
 
   return {
     urgent,
@@ -402,5 +461,6 @@ export async function getQueueStats(): Promise<{
     coldCrawl,
     cached,
     inflight,
+    pendingRetries,
   };
 }
