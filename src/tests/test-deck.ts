@@ -252,3 +252,45 @@ test('shuffleInto appends to existing cards in destination', async () => {
 
   expect(await deckB.numCards()).toBe(6);
 });
+
+test('shuffleInto randomizes card order', async () => {
+  // Use a larger deck to make the probability of random matching negligible
+  const values = Array.from({ length: 20 }, (_, i) => i);
+  const cards = await registerCards(values);
+
+  // Run multiple trials to account for the small chance of random order matching
+  let orderChanged = false;
+  for (let trial = 0; trial < 5; trial++) {
+    const [source, dest] = await Promise.all([
+      initDeck(tableId, `shuffle-random-source-${trial}`),
+      initDeck(tableId, `shuffle-random-dest-${trial}`),
+    ]);
+
+    // Add cards in known order (by card id)
+    const sortedCards = [...cards].sort((a, b) => a.id - b.id);
+    source.add(sortedCards);
+
+    // Get original order
+    const originalOrder = sortedCards.map((c) => c.id);
+
+    await source.shuffleInto(dest);
+
+    // Draw all cards and record their order
+    const resultOrder: number[] = [];
+    for (let i = 0; i < 20; i++) {
+      const card = await dest.drawCard(dest);
+      if (card) resultOrder.push(card.id);
+    }
+
+    // Check if order changed
+    const sameOrder = originalOrder.every((id, i) => id === resultOrder[i]);
+    if (!sameOrder) {
+      orderChanged = true;
+      break;
+    }
+  }
+
+  // It's extremely unlikely (1/20! per trial) that shuffleInto would
+  // produce the same order as the original on all 5 trials
+  expect(orderChanged).toBe(true);
+});

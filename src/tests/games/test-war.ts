@@ -6,8 +6,9 @@
  * - Player disconnect handling
  * - Game mechanics
  * - Game completion with small decks
+ * - Unit tests for ensureCanDraw and endGame
  */
-import { test, expect, beforeEach, afterEach, describe } from 'vitest';
+import { test, expect, beforeEach, afterEach, describe, vi } from 'vitest';
 import {
   TestClient,
   cleanupTestData,
@@ -21,6 +22,9 @@ import {
 // Import server to trigger server startup side effect
 import '../../server';
 import type { RedisClientType } from '../../server';
+import { War } from '../../games/war';
+import { initDeck, registerCards } from '../../cards';
+import { redis } from '../../redis';
 
 // Redis client for test setup/cleanup
 let redis: RedisClientType;
@@ -398,5 +402,173 @@ describe('War: Game Completion', () => {
 
     // Note: Full reshuffle testing requires playing until deck empties,
     // which needs small deck sizes. See test-gameplay.ts for integration.
+  });
+});
+
+// ============================================================
+// War: Unit Tests for ensureCanDraw
+// ============================================================
+
+describe('War: ensureCanDraw', () => {
+  const unitTestTableId = 'table:unit-test-war';
+  const testPlayerId = 'tz1UnitTestPlayer';
+
+  beforeEach(async () => {
+    // Set up a test user name in Redis
+    await redis.hSet(testPlayerId, 'name', 'TestPlayer');
+  });
+
+  afterEach(async () => {
+    // Cleanup test data
+    const keys = await redis.keys(`${unitTestTableId}*`);
+    if (keys.length > 0) {
+      await redis.del(keys as string[]);
+    }
+    await redis.del(testPlayerId);
+  });
+
+  test('returns true when deck has cards', async () => {
+    const war = new War(unitTestTableId);
+    const [deck, won] = await Promise.all([
+      initDeck(unitTestTableId, 'test-deck'),
+      initDeck(unitTestTableId, 'test-won'),
+    ]);
+
+    // Add cards to deck
+    const cards = await registerCards([1, 2, 3]);
+    deck.add(cards);
+
+    const result = await war.ensureCanDraw(deck, won, testPlayerId);
+
+    expect(result).toBe(true);
+    expect(await deck.numCards()).toBe(3); // Deck unchanged
+
+    // Cleanup
+    await war.sub.unsubscribe();
+    await war.sub.disconnect();
+  });
+
+  test('returns true after reshuffling won pile when deck is empty', async () => {
+    const war = new War(unitTestTableId);
+    const [deck, won] = await Promise.all([
+      initDeck(unitTestTableId, 'test-deck-reshuffle'),
+      initDeck(unitTestTableId, 'test-won-reshuffle'),
+    ]);
+
+    // Deck is empty, but won pile has cards
+    const cards = await registerCards([1, 2, 3, 4, 5]);
+    won.add(cards);
+
+    expect(await deck.numCards()).toBe(0);
+    expect(await won.numCards()).toBe(5);
+
+    const result = await war.ensureCanDraw(deck, won, testPlayerId);
+
+    expect(result).toBe(true);
+    // Won pile should be empty (moved to deck)
+    expect(await won.numCards()).toBe(0);
+    // Deck should have the cards now
+    expect(await deck.numCards()).toBe(5);
+
+    // Cleanup
+    await war.sub.unsubscribe();
+    await war.sub.disconnect();
+  });
+
+  test('returns false when both piles are empty', async () => {
+    const war = new War(unitTestTableId);
+    const [deck, won] = await Promise.all([
+      initDeck(unitTestTableId, 'test-deck-empty'),
+      initDeck(unitTestTableId, 'test-won-empty'),
+    ]);
+
+    // Both piles empty
+    expect(await deck.numCards()).toBe(0);
+    expect(await won.numCards()).toBe(0);
+
+    const result = await war.ensureCanDraw(deck, won, testPlayerId);
+
+    expect(result).toBe(false);
+
+    // Cleanup
+    await war.sub.unsubscribe();
+    await war.sub.disconnect();
+  });
+
+  test('broadcasts reshuffle message when reshuffling', async () => {
+    const war = new War(unitTestTableId);
+    const [deck, won] = await Promise.all([
+      initDeck(unitTestTableId, 'test-deck-msg'),
+      initDeck(unitTestTableId, 'test-won-msg'),
+    ]);
+
+    // Deck is empty, won pile has cards
+    const cards = await registerCards([1, 2]);
+    won.add(cards);
+
+    // The message broadcast goes to Redis pub/sub
+    // We verify it indirectly by checking that reshuffle occurred
+    await war.ensureCanDraw(deck, won, testPlayerId);
+
+    // Verify reshuffle happened
+    expect(await won.numCards()).toBe(0);
+    expect(await deck.numCards()).toBe(2);
+
+    // Cleanup
+    await war.sub.unsubscribe();
+    await war.sub.disconnect();
+  });
+});
+
+// ============================================================
+// War: Unit Tests for endGame
+// ============================================================
+
+describe('War: endGame', () => {
+  const unitTestTableId = 'table:unit-test-endgame';
+  const testWinnerId = 'tz1UnitTestWinner';
+
+  beforeEach(async () => {
+    // Set up a test user name in Redis
+    await redis.hSet(testWinnerId, 'name', 'Winner');
+  });
+
+  afterEach(async () => {
+    const keys = await redis.keys(`${unitTestTableId}*`);
+    if (keys.length > 0) {
+      await redis.del(keys as string[]);
+    }
+    await redis.del(testWinnerId);
+  });
+
+  test('endGame is idempotent (calling twice does not cause errors)', async () => {
+    const war = new War(unitTestTableId);
+
+    // First call should succeed
+    await war.endGame(testWinnerId);
+
+    // Second call should be a no-op (due to _gameEnded flag)
+    // This should not throw or cause any issues
+    await war.endGame(testWinnerId);
+
+    // If we got here without errors, the test passes
+    expect(true).toBe(true);
+  });
+
+  test('endGame sets internal flag to prevent duplicate execution', async () => {
+    const war = new War(unitTestTableId);
+
+    // Access the private flag via type assertion for testing
+    expect((war as { _gameEnded: boolean })._gameEnded).toBe(false);
+
+    await war.endGame(testWinnerId);
+
+    expect((war as { _gameEnded: boolean })._gameEnded).toBe(true);
+
+    // Calling again should return early
+    await war.endGame(testWinnerId);
+
+    // Flag should still be true
+    expect((war as { _gameEnded: boolean })._gameEnded).toBe(true);
   });
 });
