@@ -243,7 +243,7 @@ describe('Worker Processing', () => {
     expect(statsAfter.urgent).toBe(0);
   });
 
-  test('worker handles fetch failure gracefully', async () => {
+  test('worker handles fetch failure gracefully with retry', async () => {
     const card = await registerCard(1, 1, 'ipfs://test/card.json');
     await prioritize([card.id], Queue.Urgent);
 
@@ -253,9 +253,13 @@ describe('Worker Processing', () => {
     await new Promise((resolve) => setTimeout(resolve, 1000));
     stopWorker();
 
-    // Card should be removed from queue (to avoid infinite loops)
+    // Card should be removed from urgent queue
     const stats = await getQueueStats();
     expect(stats.urgent).toBe(0);
+
+    // Card should be in cold crawl queue (retry queue) with retry state
+    expect(stats.coldCrawl).toBe(1);
+    expect(stats.pendingRetries).toBe(1);
 
     // Card should NOT be cached after failure
     expect(await isCached(card.id)).toBe(false);
@@ -416,6 +420,7 @@ describe('getQueueStats', () => {
 
     await redis.sAdd('metadata:cached', ['100', '101']);
     await redis.hSet('metadata:inflight', '200', String(Date.now()));
+    await redis.hSet('metadata:retries', '300', JSON.stringify({ count: 1, retryAfter: Date.now() }));
 
     const stats = await getQueueStats();
 
@@ -425,5 +430,111 @@ describe('getQueueStats', () => {
     expect(stats.coldCrawl).toBe(4);
     expect(stats.cached).toBe(2);
     expect(stats.inflight).toBe(1);
+    expect(stats.pendingRetries).toBe(1);
+  });
+});
+
+describe('Retry Mechanism', () => {
+  test('permanent errors (404) do not retry', async () => {
+    const card = await registerCard(1, 1, 'ipfs://test/card.json');
+    await prioritize([card.id], Queue.Urgent);
+
+    vi.spyOn(global, 'fetch').mockResolvedValueOnce(
+      new Response('Not Found', { status: 404 })
+    );
+
+    startWorker();
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    stopWorker();
+
+    // Card should be removed from all queues - no retry for 404
+    const stats = await getQueueStats();
+    expect(stats.urgent).toBe(0);
+    expect(stats.coldCrawl).toBe(0);
+    expect(stats.pendingRetries).toBe(0);
+  });
+
+  test('transient errors (5xx) trigger retry', async () => {
+    const card = await registerCard(1, 1, 'ipfs://test/card.json');
+    await prioritize([card.id], Queue.Urgent);
+
+    vi.spyOn(global, 'fetch').mockResolvedValueOnce(
+      new Response('Server Error', { status: 500 })
+    );
+
+    startWorker();
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    stopWorker();
+
+    // Card should be moved to cold crawl queue for retry
+    const stats = await getQueueStats();
+    expect(stats.urgent).toBe(0);
+    expect(stats.coldCrawl).toBe(1);
+    expect(stats.pendingRetries).toBe(1);
+  });
+
+  test('retry respects backoff period', async () => {
+    const card = await registerCard(1, 1, 'ipfs://test/card.json');
+    await prioritize([card.id], Queue.Urgent);
+
+    // First call fails, second call should succeed (after backoff)
+    const fetchMock = vi
+      .spyOn(global, 'fetch')
+      .mockResolvedValueOnce(new Response('Server Error', { status: 500 }))
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ lot: 'success' }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      );
+
+    startWorker();
+
+    // First failure - should queue for retry with 5s backoff
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    let stats = await getQueueStats();
+    expect(stats.pendingRetries).toBe(1);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    // During backoff period, card should not be processed
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+    expect(fetchMock).toHaveBeenCalledTimes(1); // Still 1 - respecting backoff
+
+    // Wait for backoff to expire (5s total) and retry to succeed
+    await new Promise((resolve) => setTimeout(resolve, 3000));
+
+    stopWorker();
+
+    // After successful retry, should be cached
+    stats = await getQueueStats();
+    expect(stats.pendingRetries).toBe(0);
+    expect(await isCached(card.id)).toBe(true);
+  }, 10000); // Increase timeout for this test
+
+  test('max retries exceeded gives up', async () => {
+    const card = await registerCard(1, 1, 'ipfs://test/card.json');
+
+    // Set up card as having already failed MAX_RETRIES (3) times
+    await redis.hSet(
+      'metadata:retries',
+      String(card.id),
+      JSON.stringify({ count: 3, retryAfter: 0 })
+    );
+    await prioritize([card.id], Queue.ColdCrawl);
+
+    vi.spyOn(global, 'fetch').mockResolvedValueOnce(
+      new Response('Server Error', { status: 500 })
+    );
+
+    startWorker();
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    stopWorker();
+
+    // After max retries, card should be removed completely
+    const stats = await getQueueStats();
+    expect(stats.coldCrawl).toBe(0);
+    expect(stats.pendingRetries).toBe(0);
+    expect(await isCached(card.id)).toBe(false);
   });
 });
