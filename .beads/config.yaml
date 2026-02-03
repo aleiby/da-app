@@ -1,0 +1,4 @@
+prefix: da
+
+sync.mode: "dolt-native"
+
