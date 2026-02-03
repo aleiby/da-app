@@ -8,7 +8,7 @@
  * - Game completion with small decks
  * - Unit tests for ensureCanDraw and endGame
  */
-import { test, expect, beforeEach, afterEach, describe, vi } from 'vitest';
+import { test, expect, beforeEach, afterEach, describe } from 'vitest';
 import {
   TestClient,
   cleanupTestData,
@@ -24,7 +24,7 @@ import '../../server';
 import type { RedisClientType } from '../../server';
 import { War } from '../../games/war';
 import { initDeck, registerCards } from '../../cards';
-import { redis } from '../../redis';
+import { redis as redisClient } from '../../redis';
 
 // Redis client for test setup/cleanup
 let redis: RedisClientType;
@@ -415,16 +415,16 @@ describe('War: ensureCanDraw', () => {
 
   beforeEach(async () => {
     // Set up a test user name in Redis
-    await redis.hSet(testPlayerId, 'name', 'TestPlayer');
+    await redisClient.hSet(testPlayerId, 'name', 'TestPlayer');
   });
 
   afterEach(async () => {
     // Cleanup test data
-    const keys = await redis.keys(`${unitTestTableId}*`);
+    const keys = await redisClient.keys(`${unitTestTableId}*`);
     if (keys.length > 0) {
-      await redis.del(keys as string[]);
+      await redisClient.del(keys as string[]);
     }
-    await redis.del(testPlayerId);
+    await redisClient.del(testPlayerId);
   });
 
   test('returns true when deck has cards', async () => {
@@ -530,15 +530,15 @@ describe('War: endGame', () => {
 
   beforeEach(async () => {
     // Set up a test user name in Redis
-    await redis.hSet(testWinnerId, 'name', 'Winner');
+    await redisClient.hSet(testWinnerId, 'name', 'Winner');
   });
 
   afterEach(async () => {
-    const keys = await redis.keys(`${unitTestTableId}*`);
+    const keys = await redisClient.keys(`${unitTestTableId}*`);
     if (keys.length > 0) {
-      await redis.del(keys as string[]);
+      await redisClient.del(keys as string[]);
     }
-    await redis.del(testWinnerId);
+    await redisClient.del(testWinnerId);
   });
 
   test('endGame is idempotent (calling twice does not cause errors)', async () => {
