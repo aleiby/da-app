@@ -1,15 +1,7 @@
 import path from 'path';
 import { Card, getDecks, getDeckCards, getCards } from './cards';
-import {
-  newTable,
-  beginGame,
-  resumeGame,
-  broadcastMsg,
-  numPlayers,
-  getPlayerSlot,
-  getPlayerSeat,
-  requiredPlayers,
-} from './cardtable';
+import { newTable, broadcastMsg, numPlayers, getPlayerSlot, getPlayerSeat } from './cardtable';
+import { beginGame, resumeGame, requiredPlayers } from './game-registry';
 import { collectCards } from './cardcollector';
 import { Socket } from 'socket.io';
 import { redis } from './redis';
@@ -144,7 +136,7 @@ export class Connection {
         this.setTable(info.table);
       } else {
         const tableId = await newTable([this.userId]);
-        beginGame('Browse', tableId);
+        await beginGame('Browse', tableId);
       }
 
       sendEvent(oldId, ''); // refresh streams
@@ -178,9 +170,9 @@ export class Connection {
         return;
       }
 
-      if (requiredPlayers(game) == 1) {
+      if ((await requiredPlayers(game)) == 1) {
         const tableId = await newTable([this.userId]);
-        beginGame(game, tableId);
+        await beginGame(game, tableId);
         return;
       }
 
@@ -189,7 +181,7 @@ export class Connection {
       if (waiting) {
         // New table for two
         const tableId = await newTable([waiting, this.userId]);
-        beginGame(game, tableId);
+        await beginGame(game, tableId);
       } else {
         // Wait for someone else to join
         this.setWaiting(game);
@@ -206,7 +198,7 @@ export class Connection {
         broadcastMsg(this.tableId, `Player ${name} has left the table.`, this.userId);
       }
       const tableId = await newTable([this.userId]);
-      beginGame('Browse', tableId);
+      await beginGame('Browse', tableId);
     });
 
     socket.on('clickDeck', (deck: string, selected: number[], right: boolean) => {

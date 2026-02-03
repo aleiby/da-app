@@ -1,31 +1,32 @@
 /**
- * Unit tests for cardtable.ts - requiredPlayers and getPlayerSeat
+ * Unit tests for cardtable.ts and game-registry.ts
  *
- * requiredPlayers is a pure lookup function.
+ * requiredPlayers uses dynamic imports (now async).
  * getPlayerSeat uses Redis (existing test infra).
  */
 import { test, expect } from 'vitest';
-import { getPlayerSeat, requiredPlayers } from '../cardtable';
+import { getPlayerSeat } from '../cardtable';
+import { requiredPlayers } from '../game-registry';
 import { createTestRedisClient } from './socket-helpers';
 
 // ============================================================
 // requiredPlayers tests
 // ============================================================
 
-test('requiredPlayers returns 2 for War', () => {
-  expect(requiredPlayers('War')).toBe(2);
+test('requiredPlayers returns 2 for War', async () => {
+  expect(await requiredPlayers('War')).toBe(2);
 });
 
-test('requiredPlayers returns 1 for Solitaire', () => {
-  expect(requiredPlayers('Solitaire')).toBe(1);
+test('requiredPlayers returns 1 for Solitaire', async () => {
+  expect(await requiredPlayers('Solitaire')).toBe(1);
 });
 
-test('requiredPlayers returns 1 for Browse', () => {
-  expect(requiredPlayers('Browse')).toBe(1);
+test('requiredPlayers returns 1 for Browse', async () => {
+  expect(await requiredPlayers('Browse')).toBe(1);
 });
 
-test('requiredPlayers returns 0 for unknown game', () => {
-  expect(requiredPlayers('Unknown')).toBe(0);
+test('requiredPlayers returns 0 for unknown game', async () => {
+  expect(await requiredPlayers('Unknown')).toBe(0);
 });
 
 // ============================================================

@@ -1,61 +1,6 @@
 import { Card } from './cards';
 import { getUserName, sendEvent } from './connection';
-import { strict as assert } from 'assert';
 import { redis } from './redis';
-import { Browse } from './games/browse';
-import { Solitaire } from './games/solitaire';
-import { War } from './games/war';
-
-const gameTypes: any = {
-  Browse,
-  Solitaire,
-  War,
-};
-
-const newGame = (className: string, tableId: string) => {
-  return new gameTypes[className](tableId);
-};
-
-const games: any = {};
-
-export const requiredPlayers = (name: string): number => {
-  const requiredPlayers = gameTypes[name]?.requiredPlayers;
-  return requiredPlayers ?? 0;
-};
-
-export const beginGame = (name: string, tableId: string) => {
-  const game = newGame(name, tableId);
-  assert(game);
-
-  // TODO: Clean up old game?
-  assert(!(tableId in games));
-  games[tableId] = game;
-
-  // Cache name of game.
-  redis.hSet(tableId, 'game', name);
-
-  game.begin(true);
-};
-
-export const resumeGame = async (tableId: string) => {
-  // Get cached name of game, if any.
-  const name = await redis.hGet(tableId, 'game');
-  if (!name) {
-    return null;
-  }
-
-  // Create new instance if no one else has yet.
-  if (!games[tableId]) {
-    const game = newGame(name, tableId);
-    assert(game);
-
-    games[tableId] = game;
-
-    game.begin(false);
-  }
-
-  return name;
-};
 
 export const newTable = async (userIds: string[]) => {
   const getNextTableId = async () => {

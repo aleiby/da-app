@@ -559,16 +559,16 @@ describe('War: endGame', () => {
     const war = new War(unitTestTableId);
 
     // Access the private flag via type assertion for testing
-    expect((war as { _gameEnded: boolean })._gameEnded).toBe(false);
+    expect((war as unknown as { _gameEnded: boolean })._gameEnded).toBe(false);
 
     await war.endGame(testWinnerId);
 
-    expect((war as { _gameEnded: boolean })._gameEnded).toBe(true);
+    expect((war as unknown as { _gameEnded: boolean })._gameEnded).toBe(true);
 
     // Calling again should return early
     await war.endGame(testWinnerId);
 
     // Flag should still be true
-    expect((war as { _gameEnded: boolean })._gameEnded).toBe(true);
+    expect((war as unknown as { _gameEnded: boolean })._gameEnded).toBe(true);
   });
 });
