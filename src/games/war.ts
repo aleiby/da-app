@@ -131,7 +131,9 @@ export class War extends CardGame {
     broadcastMsg(this.tableId, `${playerName} reshuffles their won pile`);
     await won.shuffleInto(deck);
 
-    return true;
+    // Verify cards were transferred
+    const newDeckCount = await deck.numCards();
+    return newDeckCount > 0;
   }
 
   async begin(initialSetup: boolean) {
