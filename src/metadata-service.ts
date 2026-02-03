@@ -54,7 +54,7 @@ const enum FetchResult {
 
 // Worker state
 let workerRunning = false;
-let workerInterval: NodeJS.Timeout | null = null;
+let workerTimeout: NodeJS.Timeout | null = null;
 let cleanupInterval: NodeJS.Timeout | null = null;
 
 /**
@@ -408,13 +408,17 @@ export function startWorker(): void {
   workerRunning = true;
   console.log('Metadata worker started');
 
-  workerInterval = setInterval(async () => {
-    try {
-      await workerLoop();
-    } catch (error) {
-      console.error('Metadata worker error:', error);
-    }
-  }, RATE_LIMIT_MS);
+  const scheduleNext = () => {
+    workerTimeout = setTimeout(async () => {
+      try {
+        await workerLoop();
+      } catch (error) {
+        console.error('Metadata worker error:', error);
+      }
+      if (workerRunning) scheduleNext();
+    }, RATE_LIMIT_MS);
+  };
+  scheduleNext();
 
   // Periodically clean up stale inflight entries
   cleanupInterval = setInterval(async () => {
@@ -432,9 +436,9 @@ export function startWorker(): void {
  */
 export function stopWorker(): void {
   workerRunning = false;
-  if (workerInterval) {
-    clearInterval(workerInterval);
-    workerInterval = null;
+  if (workerTimeout) {
+    clearTimeout(workerTimeout);
+    workerTimeout = null;
   }
   if (cleanupInterval) {
     clearInterval(cleanupInterval);
