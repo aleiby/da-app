@@ -33,6 +33,7 @@ const NOTIFY_CHANNEL = 'metadata:ready';
 // Rate limiting: ~2 requests per second for Pinata
 const RATE_LIMIT_MS = 500;
 const INFLIGHT_TIMEOUT_MS = 30000; // 30 seconds before considering a fetch stale
+const STALE_CLEANUP_INTERVAL_MS = 10000; // Check for stale inflight entries every 10 seconds
 
 // IPFS gateway for fetching metadata
 const IPFS_GATEWAY = process.env.IPFS_GATEWAY || 'https://gateway.pinata.cloud/ipfs/';
@@ -40,6 +41,7 @@ const IPFS_GATEWAY = process.env.IPFS_GATEWAY || 'https://gateway.pinata.cloud/i
 // Worker state
 let workerRunning = false;
 let workerInterval: NodeJS.Timeout | null = null;
+let cleanupInterval: NodeJS.Timeout | null = null;
 
 /**
  * Metadata structure from IPFS JSON
@@ -251,6 +253,27 @@ async function isInflightStale(cardId: number): Promise<boolean> {
 }
 
 /**
+ * Clean up stale inflight entries.
+ * Removes entries that have been inflight longer than INFLIGHT_TIMEOUT_MS
+ * and re-queues them for fetching.
+ */
+async function cleanupStaleInflight(): Promise<void> {
+  const now = Date.now();
+  const entries = await redis.hGetAll(INFLIGHT_HASH);
+
+  for (const [cardIdStr, timestampStr] of Object.entries(entries)) {
+    const timestamp = Number(timestampStr);
+    if (now - timestamp > INFLIGHT_TIMEOUT_MS) {
+      // Remove from inflight
+      await redis.hDel(INFLIGHT_HASH, cardIdStr);
+      // Re-queue as urgent since games may be waiting
+      await redis.zAdd(QUEUE_PREFIX + Queue.Urgent, { score: now, value: cardIdStr }, { NX: true });
+      console.log(`Cleaned up stale inflight entry for card ${cardIdStr}`);
+    }
+  }
+}
+
+/**
  * Worker loop that processes the metadata queues.
  * Fetches one card at a time, respecting rate limits.
  */
@@ -317,6 +340,15 @@ export function startWorker(): void {
       console.error('Metadata worker error:', error);
     }
   }, RATE_LIMIT_MS);
+
+  // Periodically clean up stale inflight entries
+  cleanupInterval = setInterval(async () => {
+    try {
+      await cleanupStaleInflight();
+    } catch (error) {
+      console.error('Stale inflight cleanup error:', error);
+    }
+  }, STALE_CLEANUP_INTERVAL_MS);
 }
 
 /**
@@ -328,6 +360,10 @@ export function stopWorker(): void {
   if (workerInterval) {
     clearInterval(workerInterval);
     workerInterval = null;
+  }
+  if (cleanupInterval) {
+    clearInterval(cleanupInterval);
+    cleanupInterval = null;
   }
   console.log('Metadata worker stopped');
 }
