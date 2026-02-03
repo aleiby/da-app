@@ -85,17 +85,21 @@ export class War extends CardGame {
   }
 
   /**
-   * End the game with the given winner.
+   * End the game with the given winner, or null for a draw.
    * Cleans up Redis subscriptions and broadcasts gameOver event.
    */
-  async endGame(winner: string) {
+  async endGame(winner: string | null) {
     if (this._gameEnded) {
       return;
     }
     this._gameEnded = true;
 
-    const winnerName = await getUserName(winner);
-    broadcastMsg(this.tableId, `Game Over! ${winnerName} wins!`);
+    if (winner) {
+      const winnerName = await getUserName(winner);
+      broadcastMsg(this.tableId, `Game Over! ${winnerName} wins!`);
+    } else {
+      broadcastMsg(this.tableId, 'Game ended in a draw - both players ran out of cards!');
+    }
     sendEvent(this.tableId, 'gameOver', winner);
 
     // Clean up Redis subscriptions
@@ -332,11 +336,8 @@ export class War extends CardGame {
         ]);
 
         if (!canDrawA && !canDrawB) {
-          // Both players out of cards - shouldn't happen normally, but handle gracefully
-          broadcastMsg(this.tableId, 'Game ended in a draw - both players ran out of cards!');
-          sendEvent(this.tableId, 'gameOver', null);
-          await this.sub.unsubscribe();
-          await this.sub.disconnect();
+          // Both players out of cards - draw
+          await this.endGame(null);
         } else if (!canDrawA) {
           await this.endGame(playerB);
         } else if (!canDrawB) {
