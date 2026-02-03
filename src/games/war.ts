@@ -14,7 +14,7 @@ const WAR_DECK_SIZE = 20;
  * Lot priority mapping (from Unity client).
  * Higher number = rarer = wins ties.
  */
-const LOT_PRIORITY: Record<string, number> = {
+export const LOT_PRIORITY: Record<string, number> = {
   spdp: 4, // Rarest
   eifd: 3,
   lnuy: 2,
@@ -25,7 +25,7 @@ const LOT_PRIORITY: Record<string, number> = {
  * Get the priority value for a lot.
  * Unknown lots and loaner cards (empty lot) have priority 0.
  */
-function getLotPriority(lot: string): number {
+export function getLotPriority(lot: string): number {
   return LOT_PRIORITY[lot] || 0;
 }
 
@@ -34,7 +34,7 @@ function getLotPriority(lot: string): number {
  * Minor arcana use face value (0-13), major arcana use their full value (56-77).
  * Major arcana beat minor arcana due to higher values.
  */
-function getValue(card: Card): number {
+export function getValue(card: Card): number {
   if (card.value < totalMinor) {
     return card.value % minorCards.length;
   }
@@ -46,7 +46,7 @@ function getValue(card: Card): number {
  * First compares face values, then rarity (lot priority) on ties.
  * @returns 1 if cardA wins, -1 if cardB wins, 0 if true tie
  */
-async function compareCards(cardA: Card, cardB: Card): Promise<number> {
+export async function compareCards(cardA: Card, cardB: Card): Promise<number> {
   const valueA = getValue(cardA);
   const valueB = getValue(cardB);
 
