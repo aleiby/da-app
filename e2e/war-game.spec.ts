@@ -228,4 +228,279 @@ test.describe('War Game', () => {
       messages.some((m) => m.includes('played') || m.includes('wins') || m.includes('Welcome'))
     ).toBe(true);
   });
+
+  test('reconnection restores game state mid-game', async () => {
+    const serverUrl = process.env.SERVER_URL || 'http://localhost:8080';
+    console.log(`[RECONNECT TEST] Connecting to ${serverUrl}...`);
+
+    // Track state across reconnection
+    let mySeat = '';
+    let myDeckName = '';
+    let playerCount = 0;
+    let inWarGame = false;
+    let lastActivityTime = Date.now();
+    let shouldExit = false;
+    const messages: string[] = [];
+
+    // State restoration tracking
+    let stateRestored = false;
+    let receivedResumeGame = false;
+    let receivedSetTable = false;
+
+    function createSocket(): Socket {
+      return io(serverUrl, {
+        transports: ['websocket'],
+        timeout: 10000,
+      });
+    }
+
+    function setupSocketHandlers(socket: Socket, phase: string): void {
+      socket.on('msg', (msg: string) => {
+        console.log(`[${phase}][MSG] ${msg}`);
+        messages.push(msg);
+        lastActivityTime = Date.now();
+
+        if (msg.toLowerCase().includes('bye')) {
+          console.log(`[${phase}] Received "Bye" - will exit`);
+          shouldExit = true;
+        }
+        if (msg.includes('has left the table')) {
+          console.log(`[${phase}] Other player left - will exit`);
+          shouldExit = true;
+        }
+      });
+
+      socket.on('initDeck', (deckKey: string, cards: { id: number; facing: number }[]) => {
+        console.log(`[${phase}][INIT] ${deckKey} with ${cards.length} cards`);
+        lastActivityTime = Date.now();
+      });
+
+      socket.on('addCards', (deckKey: string, cardIds: number[], _toStart: boolean) => {
+        console.log(`[${phase}][ADD] ${cardIds.length} cards to ${deckKey}`);
+        lastActivityTime = Date.now();
+      });
+
+      socket.on('moveCards', (deckKey: string, cardIds: number[], _toStart: boolean) => {
+        console.log(`[${phase}][MOVE] ${cardIds.length} cards to ${deckKey}`);
+        lastActivityTime = Date.now();
+      });
+
+      socket.on('setTable', (tableId: string, seat: string, count: number) => {
+        console.log(`[${phase}][TABLE] Joined ${tableId} as seat ${seat} (${count} players)`);
+        lastActivityTime = Date.now();
+
+        mySeat = seat;
+        playerCount = count;
+        myDeckName = `Deck${seat}`;
+        console.log(`[${phase}] My seat: ${seat}, my deck: ${myDeckName}`);
+
+        if (phase === 'RECONNECT') {
+          receivedSetTable = true;
+        }
+      });
+
+      socket.on('resumeGame', (game: string) => {
+        console.log(`[${phase}][GAME] ${game}`);
+        lastActivityTime = Date.now();
+        if (game === 'War') {
+          inWarGame = true;
+          if (phase === 'RECONNECT') {
+            receivedResumeGame = true;
+          }
+        }
+      });
+
+      socket.on('revealCards', (cards: { id: number; value: number }[]) => {
+        if (cards.length > 0) {
+          console.log(`[${phase}][REVEAL] ${cards.length} cards`);
+          lastActivityTime = Date.now();
+        }
+      });
+
+      socket.on('facing', (deckKey: string, cardStates: { id: number; facing: number }[]) => {
+        console.log(`[${phase}][FACING] ${deckKey}: ${cardStates.length} cards`);
+        lastActivityTime = Date.now();
+      });
+    }
+
+    // === PHASE 1: Initial connection and start game ===
+    console.log('\n=== PHASE 1: Initial Connection ===');
+    let socket = createSocket();
+    setupSocketHandlers(socket, 'INITIAL');
+
+    const connected = new Promise<void>((resolve, reject) => {
+      socket.on('connect', () => {
+        console.log('[INITIAL] Connected to server');
+        resolve();
+      });
+      socket.on('connect_error', (err) => {
+        console.error('[INITIAL] Connection error:', err);
+        reject(err);
+      });
+    });
+
+    await connected;
+
+    // Set wallet and name
+    console.log(`[INITIAL] Setting wallet to ${CLAUDE_WALLET}...`);
+    socket.emit('setWallet', CLAUDE_WALLET);
+    await new Promise((r) => setTimeout(r, 1000));
+
+    console.log(`[INITIAL] Setting name to ${CLAUDE_NAME}...`);
+    socket.emit('userName', CLAUDE_NAME);
+    await new Promise((r) => setTimeout(r, 1000));
+
+    // Quit any existing game
+    if (inWarGame || playerCount > 0) {
+      console.log('[INITIAL] Quitting existing game...');
+      socket.emit('quitGame', 'War');
+      await new Promise((r) => setTimeout(r, 1000));
+      inWarGame = false;
+      playerCount = 0;
+      mySeat = '';
+      myDeckName = '';
+    }
+
+    // Join War matchmaking
+    console.log('[INITIAL] Joining War matchmaking...');
+    socket.emit('playGame', 'War');
+
+    // Wait for matchmaking and play a few rounds
+    console.log('[INITIAL] Waiting for match...');
+    const POLL_INTERVAL_MS = 1000;
+    let roundCount = 0;
+    const ROUNDS_BEFORE_DISCONNECT = 5;
+
+    lastActivityTime = Date.now();
+    shouldExit = false;
+
+    while (!shouldExit && roundCount < ROUNDS_BEFORE_DISCONNECT) {
+      if (Date.now() - lastActivityTime > 60000) {
+        console.log('[INITIAL] Timeout waiting for match');
+        break;
+      }
+
+      if (inWarGame && playerCount === 2 && myDeckName && mySeat) {
+        roundCount++;
+        console.log(`[INITIAL] Round ${roundCount}: Clicking ${myDeckName}...`);
+        socket.emit('clickDeck', myDeckName, [], false);
+      } else {
+        console.log(`[INITIAL] Waiting... (inWarGame=${inWarGame}, players=${playerCount})`);
+      }
+
+      await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
+    }
+
+    // Verify we played some rounds before disconnecting
+    expect(roundCount).toBeGreaterThan(0);
+    console.log(`[INITIAL] Played ${roundCount} rounds before disconnect`);
+
+    // Store state before disconnect for verification
+    const seatBeforeDisconnect = mySeat;
+    const deckBeforeDisconnect = myDeckName;
+
+    // === PHASE 2: Disconnect mid-game ===
+    console.log('\n=== PHASE 2: Disconnecting Mid-Game ===');
+    socket.disconnect();
+    console.log('[DISCONNECT] Socket disconnected');
+
+    // Wait a moment to ensure server registers disconnect
+    await new Promise((r) => setTimeout(r, 2000));
+
+    // === PHASE 3: Reconnect with same wallet ===
+    console.log('\n=== PHASE 3: Reconnecting ===');
+
+    // Reset tracking flags for reconnection phase
+    receivedResumeGame = false;
+    receivedSetTable = false;
+    inWarGame = false;
+    playerCount = 0;
+    mySeat = '';
+    myDeckName = '';
+
+    socket = createSocket();
+    setupSocketHandlers(socket, 'RECONNECT');
+
+    const reconnected = new Promise<void>((resolve, reject) => {
+      socket.on('connect', () => {
+        console.log('[RECONNECT] Connected to server');
+        resolve();
+      });
+      socket.on('connect_error', (err) => {
+        console.error('[RECONNECT] Connection error:', err);
+        reject(err);
+      });
+    });
+
+    await reconnected;
+
+    // Set the SAME wallet to trigger state restoration
+    console.log(`[RECONNECT] Setting wallet to ${CLAUDE_WALLET}...`);
+    socket.emit('setWallet', CLAUDE_WALLET);
+
+    // Wait for state restoration events
+    console.log('[RECONNECT] Waiting for state restoration...');
+    const stateRestoreTimeout = 10000;
+    const startWait = Date.now();
+
+    while (Date.now() - startWait < stateRestoreTimeout) {
+      if (receivedResumeGame && receivedSetTable) {
+        stateRestored = true;
+        console.log('[RECONNECT] State restored successfully!');
+        break;
+      }
+      await new Promise((r) => setTimeout(r, 500));
+    }
+
+    // Verify state was restored
+    expect(stateRestored).toBe(true);
+    expect(receivedResumeGame).toBe(true);
+    expect(receivedSetTable).toBe(true);
+    expect(mySeat).toBe(seatBeforeDisconnect);
+    expect(myDeckName).toBe(deckBeforeDisconnect);
+    console.log(`[RECONNECT] Restored to seat ${mySeat} with deck ${myDeckName}`);
+
+    // === PHASE 4: Continue and complete the game ===
+    console.log('\n=== PHASE 4: Completing Game ===');
+    shouldExit = false;
+    lastActivityTime = Date.now();
+    let postReconnectRounds = 0;
+
+    while (!shouldExit) {
+      if (Date.now() - lastActivityTime > 60000) {
+        console.log('[COMPLETE] Timeout - exiting');
+        break;
+      }
+
+      if (inWarGame && playerCount === 2 && myDeckName && mySeat) {
+        postReconnectRounds++;
+        console.log(
+          `[COMPLETE] Round ${roundCount + postReconnectRounds}: Clicking ${myDeckName}...`
+        );
+        socket.emit('clickDeck', myDeckName, [], false);
+      }
+
+      await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
+    }
+
+    // Say goodbye
+    console.log('[COMPLETE] Sending Bye...');
+    socket.emit('chat', 'Bye');
+    await new Promise((r) => setTimeout(r, 500));
+
+    // Clean up
+    console.log('[COMPLETE] Disconnecting...');
+    socket.disconnect();
+
+    // Log summary
+    console.log(`\n=== Reconnection Test Summary ===`);
+    console.log(`Rounds before disconnect: ${roundCount}`);
+    console.log(`Rounds after reconnect: ${postReconnectRounds}`);
+    console.log(`State restored: ${stateRestored}`);
+    console.log(`Seat preserved: ${mySeat === seatBeforeDisconnect}`);
+
+    // Test passes if state was restored and we continued playing
+    expect(stateRestored).toBe(true);
+    expect(postReconnectRounds).toBeGreaterThan(0);
+  });
 });
