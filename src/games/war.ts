@@ -145,7 +145,6 @@ export class War extends CardGame {
     const playerB = this.players[1];
     assert(playerA != playerB);
 
-    // TODO: Store decks in table, send initial state on connect.
     const [deckA, deckB, playedA, playedB, wonA, wonB] = await Promise.all([
       initDeck(this.tableId, 'DeckA'),
       initDeck(this.tableId, 'DeckB'),
