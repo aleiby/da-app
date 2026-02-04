@@ -22,7 +22,13 @@ export class Browse extends CardGame {
       return false;
     }
 
-    const names = initialSetup ? ['DeckA', 'Hand'] : await getDecks(this.tableId);
+    // Get deck names - use defaults if no decks exist (handles race condition on resume)
+    let names = initialSetup ? ['DeckA', 'Hand'] : await getDecks(this.tableId);
+    if (!names.includes('Hand')) {
+      // Required deck missing - treat as initial setup
+      names = ['DeckA', 'Hand'];
+      initialSetup = true;
+    }
     const decks = await Promise.all(names.map((name) => initDeck(this.tableId, name)));
 
     const dir: CardDeckMap = {};
