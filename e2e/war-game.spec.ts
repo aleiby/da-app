@@ -150,8 +150,10 @@ test.describe('War Game', () => {
     socket.emit('userName', CLAUDE_NAME);
     await new Promise((r) => setTimeout(r, 1000));
 
-    // Always quit any existing game and rejoin fresh
-    // (reconnection state is often stale and unreliable)
+    // Always quit any existing game and rejoin fresh.
+    // When connecting to an unknown game state (e.g., human already in War), our local
+    // tracking variables may not match reality since we miss events that happened before
+    // we connected. Quitting ensures we start from a clean, synchronized state.
     console.log(`Current state: inWarGame=${inWarGame}, playerCount=${playerCount}`);
 
     if (inWarGame || playerCount > 0) {
