@@ -18,6 +18,10 @@
 import express from 'express';
 import http from 'http';
 import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 import rateLimit from 'express-rate-limit';
 import { Server, Socket } from 'socket.io';
 import { isDevelopment } from './utils';
