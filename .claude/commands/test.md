@@ -27,7 +27,7 @@ Where `<game>` is one of:
 
 2. **Check if server is running:**
    ```bash
-   curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/socket.io/?EIO=4&transport=polling 2>/dev/null || echo "000"
+   curl -s -o /dev/null -w "%{http_code}" http://localhost:3001/socket.io/?EIO=4&transport=polling 2>/dev/null || echo "000"
    ```
    - If response is `200` or `400`, server is running
    - If `000` or connection refused, server needs to start
@@ -39,7 +39,7 @@ Where `<game>` is one of:
    Then poll until ready (max 30 seconds):
    ```bash
    for i in {1..30}; do
-     curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/socket.io/?EIO=4&transport=polling 2>/dev/null | grep -q "200\|400" && break
+     curl -s -o /dev/null -w "%{http_code}" http://localhost:3001/socket.io/?EIO=4&transport=polling 2>/dev/null | grep -q "200\|400" && break
      sleep 1
    done
    ```

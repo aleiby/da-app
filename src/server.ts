@@ -142,6 +142,15 @@ declare global {
 
 if (!globalThis.__daServerStarted) {
   globalThis.__daServerStarted = true;
+  server.on('error', (err: NodeJS.ErrnoException) => {
+    if (err.code === 'EADDRINUSE') {
+      console.error(`\n❌ ERROR: Port ${port} is already in use.`);
+      console.error(`Another server instance may be running.`);
+      console.error(`Run: pkill -f "tsx.*server" to kill existing servers.\n`);
+      process.exit(1);
+    }
+    throw err;
+  });
   server.listen(port, () => {
     console.log(`server listening on port: ${port}`);
   });

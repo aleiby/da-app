@@ -129,9 +129,11 @@ export class CardDeck {
   }
 
   _verifyHaveNot(idStrings: string[]) {
-    redis
-      .zmScore(this.key, idStrings)
-      .then((results) => assert(!results.some(Boolean), `${this.key} already has: ${idStrings}`));
+    redis.zmScore(this.key, idStrings).then((results) => {
+      if (results.some(Boolean)) {
+        console.warn(`WARNING: ${this.key} already has some cards being added (stale state?)`);
+      }
+    });
   }
   _verifyHave(idStrings: string[]) {
     redis

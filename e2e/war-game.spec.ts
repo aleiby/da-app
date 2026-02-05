@@ -73,16 +73,30 @@ test.describe('War Game', () => {
       }
     });
 
-    // Track deck initialization
+    // Track deck card counts to verify game is properly initialized
+    let myDeckCardCount = 0;
+
+    // Track current table for filtering deck events
+    let currentTableId = '';
+
+    // Track deck initialization - only for current table
     socket.on('initDeck', (deckKey: string, cards: { id: number; facing: number }[]) => {
       console.log(`[INIT] ${deckKey} with ${cards.length} cards`);
       lastActivityTime = Date.now();
+      // Update our deck count if this is our deck on our current table
+      if (currentTableId && myDeckName && deckKey === `${currentTableId}:deck:${myDeckName}`) {
+        myDeckCardCount = cards.length;
+      }
     });
 
-    // Track cards being added to decks (after shuffling)
+    // Track cards being added to decks (after shuffling) - only for current table
     socket.on('addCards', (deckKey: string, cardIds: number[], _toStart: boolean) => {
       console.log(`[ADD] ${cardIds.length} cards to ${deckKey}`);
       lastActivityTime = Date.now();
+      // Update our deck count if this is our deck on our current table
+      if (currentTableId && myDeckName && deckKey === `${currentTableId}:deck:${myDeckName}`) {
+        myDeckCardCount += cardIds.length;
+      }
     });
 
     // Track cards moving between decks (during gameplay)
@@ -96,6 +110,13 @@ test.describe('War Game', () => {
     socket.on('setTable', (tableId: string, seat: string, count: number) => {
       console.log(`[TABLE] Joined ${tableId} as seat ${seat} (${count} players)`);
       lastActivityTime = Date.now();
+
+      // Reset state when joining a different table
+      if (tableId !== currentTableId) {
+        currentTableId = tableId;
+        myDeckCardCount = 0;
+        inWarGame = false;
+      }
 
       // Detect if other player left (was 2 players, now 1)
       if (wasInGame && playerCount === 2 && count < 2) {
@@ -150,26 +171,31 @@ test.describe('War Game', () => {
     socket.emit('userName', CLAUDE_NAME);
     await new Promise((r) => setTimeout(r, 1000));
 
-    // Always quit any existing game and rejoin fresh.
-    // When connecting to an unknown game state (e.g., human already in War), our local
-    // tracking variables may not match reality since we miss events that happened before
-    // we connected. Quitting ensures we start from a clean, synchronized state.
-    console.log(`Current state: inWarGame=${inWarGame}, playerCount=${playerCount}`);
+    // Check if we're already in a valid 2-player War game (e.g., reconnecting to existing game)
+    // Must have: War game active, 2 players, and cards in our deck
+    console.log(
+      `Current state: inWarGame=${inWarGame}, playerCount=${playerCount}, myDeckCards=${myDeckCardCount}`
+    );
 
-    if (inWarGame || playerCount > 0) {
-      console.log('Quitting existing game to start fresh...');
-      socket.emit('quitGame', 'War');
-      await new Promise((r) => setTimeout(r, 1000));
-      // Reset state after quitting
-      inWarGame = false;
-      playerCount = 0;
-      mySeat = '';
-      myDeckName = '';
+    if (inWarGame && playerCount === 2 && myDeckCardCount > 0) {
+      console.log('Reconnecting to existing 2-player War game - skipping matchmaking');
+    } else {
+      // Quit any partial game state and rejoin fresh
+      if (inWarGame || playerCount > 0) {
+        console.log('Quitting existing game to start fresh...');
+        socket.emit('quitGame', 'War');
+        await new Promise((r) => setTimeout(r, 1000));
+        // Reset state after quitting
+        inWarGame = false;
+        playerCount = 0;
+        mySeat = '';
+        myDeckName = '';
+      }
+
+      // Join War matchmaking
+      console.log('Joining War matchmaking...');
+      socket.emit('playGame', 'War');
     }
-
-    // Join War matchmaking
-    console.log('Joining War matchmaking...');
-    socket.emit('playGame', 'War');
 
     // Wait for matchmaking
     console.log('Waiting for match...');

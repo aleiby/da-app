@@ -1,5 +1,13 @@
 import { CardGame, ClickDeckArgs } from '../cardgame';
-import { Card, CardDeck, initDeck, getShuffledDeck, getDeckCards, getCard, DeckContents } from '../cards';
+import {
+  Card,
+  CardDeck,
+  initDeck,
+  getShuffledDeck,
+  getDeckCards,
+  getCard,
+  DeckContents,
+} from '../cards';
 import { broadcastMsg, revealCard } from '../cardtable';
 import { allCards, minorCards, totalMinor } from '../tarot';
 import { getUserName, sendEvent } from '../connection';
@@ -168,6 +176,8 @@ export class War extends CardGame {
     };
 
     let [cardA, cardB] = await getLastPlayed();
+    let drawingA = false;
+    let drawingB = false;
 
     const cards = allCards();
 
@@ -287,8 +297,13 @@ export class War extends CardGame {
 
       // Select a card if haven't already
       if (player === playerA) {
-        if (cardA === null && name === deckA.name) {
+        console.log(`[CLICK-A] cardA=${cardA?.id ?? 'null'}, drawingA=${drawingA}, deck=${name}`);
+        if (cardA === null && !drawingA && name === deckA.name) {
+          drawingA = true;
+          console.log(`[DRAW-A] Starting draw...`);
           cardA = await deckA.drawCard(playedA);
+          console.log(`[DRAW-A] Done, cardA=${cardA?.id ?? 'null'}`);
+          drawingA = false;
           if (cardA != null) {
             revealCard(this.tableId, cardA);
             const name = await getUserName(playerA);
@@ -296,8 +311,13 @@ export class War extends CardGame {
           }
         }
       } else {
-        if (cardB === null && name === deckB.name) {
+        console.log(`[CLICK-B] cardB=${cardB?.id ?? 'null'}, drawingB=${drawingB}, deck=${name}`);
+        if (cardB === null && !drawingB && name === deckB.name) {
+          drawingB = true;
+          console.log(`[DRAW-B] Starting draw...`);
           cardB = await deckB.drawCard(playedB);
+          console.log(`[DRAW-B] Done, cardB=${cardB?.id ?? 'null'}`);
+          drawingB = false;
           if (cardB != null) {
             revealCard(this.tableId, cardB);
             const name = await getUserName(playerB);

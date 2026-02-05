@@ -1,5 +1,5 @@
 /* eslint-disable react-hooks/static-components */
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { io } from 'socket.io-client';
 import { allCards } from './tarot';
 import Container from 'react-bootstrap/Container';
@@ -35,31 +35,6 @@ function App() {
   const [totals, setTotals] = useState([]);
   const [mintotals, setMinTotals] = useState(0);
   const [maxtotals, setMaxTotals] = useState(100);
-  // Start with devicePixelRatio=1 for readable text on retina displays
-  // User can adjust with Cmd+/Cmd- (or Ctrl+/Ctrl- on Windows/Linux)
-  const [zoomLevel, setZoomLevel] = useState(1);
-
-  // Handle Cmd+/- for zoom control
-  const handleKeyDown = useCallback((e: KeyboardEvent) => {
-    if (e.metaKey || e.ctrlKey) {
-      if (e.key === '=' || e.key === '+') {
-        e.preventDefault();
-        setZoomLevel((z) => Math.min(z + 0.25, window.devicePixelRatio));
-      } else if (e.key === '-') {
-        e.preventDefault();
-        setZoomLevel((z) => Math.max(z - 0.25, 0.5));
-      } else if (e.key === '0') {
-        e.preventDefault();
-        setZoomLevel(1);
-      }
-    }
-  }, []);
-
-  useEffect(() => {
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleKeyDown]);
-
   useEffect(() => {
     browser.on('isDevelopment', (isDevelopment) => setIsDevelopment(isDevelopment));
     browser.on('pct', (pct: number, label: string) => {
@@ -198,7 +173,7 @@ function App() {
             <Unity
               unityContext={unityContext}
               style={{ width: '100%', height: '100%' }}
-              devicePixelRatio={zoomLevel}
+              devicePixelRatio={0.75}
             />
           </Ratio>
           {progression < 1 && <Loading />}
