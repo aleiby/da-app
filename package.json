@@ -4,8 +4,8 @@
   "private": true,
   "type": "module",
   "engines": {
-    "node": "^18.20.0",
-    "npm": "^10.0.0"
+    "node": ">=18.20.0",
+    "npm": ">=10.0.0"
   },
   "dependencies": {
     "@airgap/beacon-sdk": "^4.6.4",
