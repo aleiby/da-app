@@ -42,6 +42,18 @@ export const numPlayers = async (tableId: string) => {
   return await redis.zCard(`${tableId}:players`);
 };
 
+// Remove a player from the table
+export const removePlayer = async (tableId: string, userId: string) => {
+  // Remove from Redis sorted set
+  await redis.zRem(`${tableId}:players`, userId);
+
+  // Clear the player's table reference
+  await redis.hDel(userId, 'table');
+
+  // Notify remaining players so they can update their UI (remove avatar, cards)
+  sendEvent(tableId, 'playerLeft', userId);
+};
+
 // Get the player's index at the table (0, 1, 2, etc.)
 export const getPlayerSlot = async (tableId: string, userId: string) => {
   return await redis.zScore(`${tableId}:players`, userId);

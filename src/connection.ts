@@ -5,7 +5,14 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 import { Card, getDecks, getDeckCards, getCards } from './cards';
-import { newTable, broadcastMsg, numPlayers, getPlayerSlot, getPlayerSeat } from './cardtable';
+import {
+  newTable,
+  broadcastMsg,
+  numPlayers,
+  getPlayerSlot,
+  getPlayerSeat,
+  removePlayer,
+} from './cardtable';
 import { beginGame, resumeGame, requiredPlayers } from './game-registry';
 import { collectCards } from './cardcollector';
 import { Socket } from 'socket.io';
@@ -65,8 +72,14 @@ export class Connection {
     return true;
   }
 
-  disconnect() {
+  async disconnect() {
     this.connected = false;
+    // Clean up player from table when they disconnect
+    if (this.tableId && this.userId) {
+      const name = await this.getName();
+      broadcastMsg(this.tableId, `Player ${name} has left the table.`, this.userId);
+      await removePlayer(this.tableId, this.userId);
+    }
   }
 
   constructor(socket: Socket) {
@@ -198,9 +211,10 @@ export class Connection {
       const name = await this.getName();
       console.log(`Player ${name} is quitting ${game}`);
       redis.hDel(this.userId, 'pending');
-      // Notify remaining players at the old table
+      // Remove player from old table and notify remaining players
       if (this.tableId) {
         broadcastMsg(this.tableId, `Player ${name} has left the table.`, this.userId);
+        await removePlayer(this.tableId, this.userId);
       }
       const tableId = await newTable([this.userId]);
       await beginGame('Browse', tableId);
