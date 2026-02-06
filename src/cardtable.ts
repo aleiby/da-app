@@ -13,9 +13,15 @@ export const newTable = async (userIds: string[]) => {
     `${tableId}:players`,
     userIds.map((userId, index) => ({ score: index, value: userId }))
   );
-  userIds.forEach((userId, _index) => {
-    // TODO: Remove userId from prev table's players list
-    //       (Cleanup on empty)
+
+  for (const userId of userIds) {
+    // Remove userId from prev table's players list
+    const prevTableId = await redis.hGet(userId, 'table');
+    if (prevTableId && prevTableId !== tableId) {
+      await redis.zRem(`${prevTableId}:players`, userId);
+      // Notify remaining players at the old table that this player left
+      sendEvent(prevTableId, 'playerLeft', userId);
+    }
 
     // Store table across sessions.
     redis.hSet(userId, 'table', tableId);
@@ -24,10 +30,9 @@ export const newTable = async (userIds: string[]) => {
     sendEvent(userId, 'setTable', tableId);
 
     // Send welcome messages.
-    getUserName(userId).then((name) =>
-      broadcastMsg(tableId, `Player ${name} has joined the table!`, userId)
-    );
-  });
+    const name = await getUserName(userId);
+    broadcastMsg(tableId, `Player ${name} has joined the table!`, userId);
+  }
 
   return tableId;
 };
@@ -35,6 +40,13 @@ export const newTable = async (userIds: string[]) => {
 // Get the wallet addresses for the players at the table
 export const getPlayers = async (tableId: string) => {
   return await redis.zRange(`${tableId}:players`, 0, -1);
+};
+
+// Remove a player from the table's player list
+export const removePlayer = async (tableId: string, userId: string) => {
+  await redis.zRem(`${tableId}:players`, userId);
+  // Notify remaining players that someone left
+  sendEvent(tableId, 'playerLeft', userId);
 };
 
 // Get the number of players at the table

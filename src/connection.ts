@@ -198,7 +198,7 @@ export class Connection {
       const name = await this.getName();
       console.log(`Player ${name} is quitting ${game}`);
       redis.hDel(this.userId, 'pending');
-      // Notify remaining players at the old table
+      // Notify remaining players at the old table (newTable handles the actual removal)
       if (this.tableId) {
         broadcastMsg(this.tableId, `Player ${name} has left the table.`, this.userId);
       }
