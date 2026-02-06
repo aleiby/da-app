@@ -82,6 +82,21 @@ export const getPlayer = async (tableIdAndSlot: string) => {
   return await getPlayerBySlot(tableId, slot);
 };
 
+// Check if a table is still valid (has a game and at least one player)
+export const isTableValid = async (tableId: string): Promise<boolean> => {
+  const game = await redis.hGet(tableId, 'game');
+  if (!game) return false;
+
+  const playerCount = await redis.zCard(`${tableId}:players`);
+  return playerCount > 0;
+};
+
+// Check if a player is still in the table's player list
+export const isPlayerAtTable = async (tableId: string, userId: string): Promise<boolean> => {
+  const score = await redis.zScore(`${tableId}:players`, userId);
+  return score !== null;
+};
+
 // Send a message to everyone at the table (with optional exclude userId).
 export const broadcastMsg = async (tableId: string, text: string, exclude?: string) => {
   const debug = true;

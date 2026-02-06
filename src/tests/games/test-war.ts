@@ -259,11 +259,10 @@ describe('War: Reconnection Support', () => {
     await clientA2.connect();
     clientA2.setWallet();
 
-    // Wait for table assignment (with longer timeout due to potential test interference)
+    // Wait for table assignment
     const tableInfo = await clientA2.waitForSetTable(10000);
-    // Note: Test 1 already verifies reconnection to same table. This test verifies
-    // the player gets a table assignment and War game resume after reconnecting.
-    expect(tableInfo.tableId).toBeDefined();
+    // Player should rejoin the SAME table they disconnected from
+    expect(tableInfo.tableId).toBe(tableA.tableId);
 
     const resumedGame = await clientA2.waitForResumeGame(10000);
     expect(resumedGame).toBe('War');

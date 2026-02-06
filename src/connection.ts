@@ -12,6 +12,8 @@ import {
   getPlayerSlot,
   getPlayerSeat,
   removePlayer,
+  isTableValid,
+  isPlayerAtTable,
 } from './cardtable';
 import { beginGame, resumeGame, requiredPlayers } from './game-registry';
 import { collectCards } from './cardcollector';
@@ -74,11 +76,12 @@ export class Connection {
 
   async disconnect() {
     this.connected = false;
-    // Clean up player from table when they disconnect
+    // Note: We intentionally do NOT remove the player from the table on disconnect.
+    // This allows players to reconnect to their existing game after network issues
+    // or browser refresh. Players are only removed when they explicitly quit.
     if (this.tableId && this.userId) {
       const name = await this.getName();
-      broadcastMsg(this.tableId, `Player ${name} has left the table.`, this.userId);
-      await removePlayer(this.tableId, this.userId);
+      broadcastMsg(this.tableId, `Player ${name} has disconnected.`, this.userId);
     }
   }
 
@@ -150,8 +153,25 @@ export class Connection {
         this.socket.emit('resumeGame', info.pending);
         this.socket.emit('msg', 'Waiting for another player...');
       }
+      // Check if player has a valid existing table to rejoin
       if (info.table) {
-        this.setTable(info.table);
+        const [tableValid, playerAtTable] = await Promise.all([
+          isTableValid(info.table),
+          isPlayerAtTable(info.table, this.userId),
+        ]);
+
+        if (tableValid && playerAtTable) {
+          console.log(`Reconnecting ${address} to existing table ${info.table}`);
+          this.setTable(info.table);
+        } else {
+          // Clear stale table reference and create new Browse table
+          console.log(
+            `Clearing stale table reference for ${address} (valid=${tableValid}, atTable=${playerAtTable})`
+          );
+          redis.hDel(this.userId, 'table');
+          const tableId = await newTable([this.userId]);
+          await beginGame('Browse', tableId);
+        }
       } else {
         const tableId = await newTable([this.userId]);
         await beginGame('Browse', tableId);
